@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createResource, updateResource } from '../../services/resourceService';
 
 /**
@@ -36,6 +36,14 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -81,11 +89,58 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: '600px', margin: '0 auto' }}>
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onCancel();
+    }
+  };
 
-      {/* ── Error alert ── */}
-      {error && (
+  return (
+    <div 
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        zIndex: 9999,
+        padding: '1rem',
+      }}
+      onClick={handleBackdropClick}
+    >
+      <form 
+        onSubmit={handleSubmit}
+        onClick={(e) => e.stopPropagation()}
+        style={{ 
+          width: '100%', 
+          maxWidth: '600px', 
+          backgroundColor: 'white', 
+          padding: '2.5rem', 
+          borderRadius: '14px', 
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)', 
+          maxHeight: '90vh', 
+          overflowY: 'auto',
+          position: 'relative'
+        }}>
+
+        {/* ── Form Title ── */}
+        <h2 style={{
+          fontSize: '18px',
+          fontWeight: 'bold',
+          color: '#0B1F3A',
+          marginBottom: '1.5rem',
+          textAlign: 'center',
+          marginTop: 0,
+        }}>
+          {isEditMode ? 'Edit Resource' : 'Create New Resource'}
+        </h2>
+
+        {/* ── Error alert ── */}
+        {error && (
         <div style={{
           marginBottom: '1.25rem',
           padding: '0.875rem 1rem',
@@ -304,6 +359,7 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
         </button>
       </div>
     </form>
+    </div>
   );
 };
 

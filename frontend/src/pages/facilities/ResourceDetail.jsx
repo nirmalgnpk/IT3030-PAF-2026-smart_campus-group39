@@ -40,11 +40,18 @@ const Ico = ({ type }) => {
 };
 
 const DetaljRow = ({ label, value }) => (
-  <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '1rem', padding: '0.75rem 0', borderBottom: '1px solid rgba(11,31,58,0.08)' }}>
+  <div style={{
+    display: 'grid',
+    gridTemplateColumns: 'minmax(120px, 150px) 1fr',
+    gap: '1.5rem',
+    padding: '1rem 0',
+    borderBottom: '1px solid rgba(11,31,58,0.08)',
+    alignItems: 'flex-start',
+  }}>
     <label style={{ fontSize: '12px', fontWeight: '600', color: '#5A6A82', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
       {label}
     </label>
-    <span style={{ fontSize: '13px', color: '#0B1F3A', lineHeight: '1.5' }}>
+    <span style={{ fontSize: '13px', color: '#0B1F3A', lineHeight: '1.6', wordBreak: 'break-word' }}>
       {value}
     </span>
   </div>
@@ -54,13 +61,15 @@ const MetricCard = ({ icon, label, value }) => (
   <div style={{
     backgroundColor: 'white',
     borderRadius: '12px',
-    padding: '1rem',
+    padding: '1.25rem',
     border: '1px solid rgba(11,31,58,0.10)',
     textAlign: 'center',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '0.5rem',
+    gap: '0.75rem',
+    boxShadow: '0 1px 3px rgba(11,31,58,0.05)',
+    transition: 'all 200ms ease',
   }}>
     <div style={{ opacity: 0.6 }}>
       {icon}
@@ -69,7 +78,7 @@ const MetricCard = ({ icon, label, value }) => (
       <div style={{ fontSize: '11px', fontWeight: '600', color: '#5A6A82', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
         {label}
       </div>
-      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#0B1F3A', marginTop: '0.25rem' }}>
+      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#0B1F3A', marginTop: '0.25rem', wordBreak: 'break-word' }}>
         {value}
       </div>
     </div>
@@ -97,8 +106,10 @@ const NavBar = ({ resourceName, onBack, onEdit, onDelete, isDeleteLoading }) => 
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingBottom: '1.5rem',
+    marginBottom: '2rem',
     borderBottom: '1px solid rgba(11,31,58,0.10)',
-    marginBottom: '1.5rem',
+    flexWrap: 'wrap',
+    gap: '1rem',
   }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
       <button
@@ -225,7 +236,8 @@ const ResourceDetail = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: '400px',
+        minHeight: '100vh',
+        backgroundColor: '#F7F8FC',
       }}>
         <Spinner size={32} />
       </div>
@@ -234,31 +246,62 @@ const ResourceDetail = () => {
   if (error)
     return (
       <div style={{
-        padding: '2rem',
-        backgroundColor: '#FCEBEB',
-        color: '#A32D2D',
-        borderRadius: '12px',
-        textAlign: 'center',
+        minHeight: '100vh',
+        backgroundColor: '#F7F8FC',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem 1rem',
       }}>
-        {error}
+        <div style={{
+          padding: '2rem',
+          backgroundColor: '#FCEBEB',
+          color: '#A32D2D',
+          borderRadius: '12px',
+          textAlign: 'center',
+          maxWidth: '500px',
+          width: '100%',
+        }}>
+          {error}
+        </div>
       </div>
     );
 
   if (!resource)
     return (
       <div style={{
-        padding: '2rem',
-        backgroundColor: '#f3f4f6',
-        color: '#6b7280',
-        borderRadius: '12px',
-        textAlign: 'center',
+        minHeight: '100vh',
+        backgroundColor: '#F7F8FC',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem 1rem',
       }}>
-        Resource not found.
+        <div style={{
+          padding: '2rem',
+          backgroundColor: '#f3f4f6',
+          color: '#6b7280',
+          borderRadius: '12px',
+          textAlign: 'center',
+          maxWidth: '500px',
+          width: '100%',
+        }}>
+          Resource not found.
+        </div>
       </div>
     );
 
   return (
-    <div style={{ maxWidth: '900px' }}>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#F7F8FC',
+      padding: '2rem 1rem',
+    }}>
+      <div style={{
+        maxWidth: '900px',
+        margin: '0 auto',
+        width: '100%',
+      }}>
 
       {/* ── NavBar ── */}
       <NavBar
@@ -272,9 +315,12 @@ const ResourceDetail = () => {
       {/* ── Metrics ── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-        gap: '0.875rem',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        gap: '1rem',
         marginBottom: '2rem',
+        '@media (max-width: 600px)': {
+          gridTemplateColumns: '1fr',
+        },
       }}>
         <MetricCard icon={<Ico type="capacity" />} label="Capacity" value={`${resource.capacity} people`} />
         <MetricCard icon={<Ico type="location" />} label="Status" value={resource.status.replace(/_/g, ' ')} />
@@ -288,8 +334,8 @@ const ResourceDetail = () => {
             backgroundColor: 'white',
             borderRadius: '14px',
             border: '1px solid rgba(11,31,58,0.10)',
-            padding: '1.5rem',
-            marginBottom: '1.5rem',
+            padding: '2rem',
+            boxShadow: '0 2px 4px rgba(11,31,58,0.06)',
           }}>
             <h3 style={{
               fontSize: '13px',
@@ -308,11 +354,11 @@ const ResourceDetail = () => {
               <DetaljRow label="Capacity" value={`${resource.capacity} people`} />
               <DetaljRow label="Status" value={resource.status.replace(/_/g, ' ')} />
               <DetaljRow label="Availability" value={resource.availabilityWindows} />
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '1rem', paddingTop: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 150px) 1fr', gap: '1.5rem', paddingTop: '1rem' }}>
                 <label style={{ fontSize: '12px', fontWeight: '600', color: '#5A6A82', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Description
                 </label>
-                <span style={{ fontSize: '13px', color: '#0B1F3A', lineHeight: '1.5' }}>
+                <span style={{ fontSize: '13px', color: '#0B1F3A', lineHeight: '1.6', wordBreak: 'break-word' }}>
                   {resource.description || 'No description provided.'}
                 </span>
               </div>
@@ -320,23 +366,16 @@ const ResourceDetail = () => {
           </div>
         </>
       ) : (
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '14px',
-          border: '1px solid rgba(11,31,58,0.10)',
-          padding: '1.5rem',
-          marginBottom: '1.5rem',
-        }}>
-          <ResourceForm
-            initialData={resource}
-            onSubmit={() => {
-              setShowForm(false);
-              fetchResource();
-            }}
-            onCancel={() => setShowForm(false)}
-          />
-        </div>
+        <ResourceForm
+          initialData={resource}
+          onSubmit={() => {
+            setShowForm(false);
+            fetchResource();
+          }}
+          onCancel={() => setShowForm(false)}
+        />
       )}
+      </div>
     </div>
   );
 };
