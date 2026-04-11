@@ -1,0 +1,84 @@
+import React, { useState } from "react";
+
+function Login() {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    const handleLogin = (e) => {
+        e.preventDefault();
+
+        // Temporary login logic
+        console.log("Email:", email);
+        console.log("Password:", password);
+
+        alert("Login clicked!");
+    };
+
+    return (
+        <div style={styles.container}>
+            <div style={styles.card}>
+                <h2>Login</h2>
+
+                <form onSubmit={handleLogin}>
+                    <input
+                        type="email"
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        style={styles.input}
+                        required
+                    />
+
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        style={styles.input}
+                        required
+                    />
+
+                    <button type="submit" style={styles.button}>
+                        Login
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+const styles = {
+    container: {
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        background: "#f5f7fb",
+    },
+    card: {
+        padding: "30px",
+        background: "white",
+        borderRadius: "10px",
+        boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+        width: "300px",
+        textAlign: "center",
+    },
+    input: {
+        width: "100%",
+        padding: "10px",
+        margin: "10px 0",
+        borderRadius: "5px",
+        border: "1px solid #ccc",
+    },
+    button: {
+        width: "100%",
+        padding: "10px",
+        background: "#2563eb",
+        color: "white",
+        border: "none",
+        borderRadius: "5px",
+        cursor: "pointer",
+    },
+};
+
+export default Login;
