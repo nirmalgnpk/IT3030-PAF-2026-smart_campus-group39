@@ -8,7 +8,7 @@ function Navbar() {
 
       <ul style={styles.navLinks}>
         <li><Link to="/" style={styles.link}>Home</Link></li>
-        <li><Link to="/resources" style={styles.link}>Resources</Link></li>
+        <li><Link to="/facilities" style={styles.link}>Resources</Link></li>
         <li><Link to="/bookings" style={styles.link}>Bookings</Link></li>
         <li><Link to="/tickets" style={styles.link}>Tickets</Link></li>
         <li><Link to="/notifications" style={styles.link}>Notifications</Link></li>
