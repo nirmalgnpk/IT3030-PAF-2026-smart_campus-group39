@@ -14,19 +14,21 @@ public class User {
     private String email;
     private String password;
     private String role;
+    private byte[] profilePhoto;      // ← blob stored in MongoDB
+    private String profilePhotoType;  // ← e.g. "image/jpeg", "image/png"
 
-    // Constructors
     public User() {}
 
-    public User(String userName, String name, String email, String password, String role) {
+    public User(String userName, String name, String email,
+                String password, String role) {
         this.userName = userName;
-        this.name = name;
-        this.email = email;
+        this.name     = name;
+        this.email    = email;
         this.password = password;
-        this.role = role;
+        this.role     = role;
     }
 
-    // Getters and Setters
+    // Getters & Setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
@@ -44,4 +46,10 @@ public class User {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+
+    public byte[] getProfilePhoto() { return profilePhoto; }
+    public void setProfilePhoto(byte[] profilePhoto) { this.profilePhoto = profilePhoto; }
+
+    public String getProfilePhotoType() { return profilePhotoType; }
+    public void setProfilePhotoType(String profilePhotoType) { this.profilePhotoType = profilePhotoType; }
 }

@@ -7,6 +7,8 @@ public class UserDTO {
     private String email;
     private String password;
     private String role;
+    // Profile photo is received as MultipartFile in the controller,
+    // NOT as a DTO field, so nothing extra is needed here.
 
     public UserDTO() {}
 
