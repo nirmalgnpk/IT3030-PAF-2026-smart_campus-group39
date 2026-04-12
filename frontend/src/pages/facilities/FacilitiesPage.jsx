@@ -15,7 +15,10 @@ const FacilitiesPage = ({ isAdmin = false }) => {
     <div style={{ minHeight: '100vh', backgroundColor: '#F7F8FC' }}>
 
       {/* ── Hero header ── */}
-      <div style={{ backgroundColor: '#0B1F3A', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ backgroundColor: '#0B1F3A', position: 'relative', overflow: 'hidden', backgroundImage: 'url(/image/56.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
+        
+        {/* Dark overlay */}
+        <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.85)', pointerEvents: 'none' }} />
 
         {/* Subtle geometric decoration */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
@@ -28,7 +31,7 @@ const FacilitiesPage = ({ isAdmin = false }) => {
         {/* Accent gradient bar at very top */}
         <div style={{ height: '4px', width: '100%', background: 'linear-gradient(to right, #1A3F8F, #C8963E, #1D9E75)' }} />
 
-        <div style={{ position: 'relative', maxWidth: '80rem', margin: '0 auto', padding: '2.5rem 1rem', display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div style={{ position: 'relative', maxWidth: '80rem', margin: '0 auto', padding: '2.5rem 1rem', display: 'flex', flexDirection: 'column', gap: 0, zIndex: 10 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
             <div>
