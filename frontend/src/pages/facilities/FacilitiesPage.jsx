@@ -12,7 +12,7 @@ const FacilitiesPage = ({ isAdmin = false }) => {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#F7F8FC' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#FFFFFF' }}>
 
       {/* ── Hero header ── */}
       <div style={{ backgroundColor: '#0B1F3A', position: 'relative', overflow: 'hidden', backgroundImage: 'url(/image/56.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>

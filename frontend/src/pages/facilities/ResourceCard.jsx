@@ -122,6 +122,7 @@ const MetaRow = ({ icon, label, children }) => (
 
 /* ─── ResourceCard ─── */
 const ResourceCard = ({ resource, onViewDetails, onEdit, onDelete, isAdmin = false }) => {
+  // eslint-disable-next-line no-unused-vars
   const [isDeleting, setIsDeleting] = React.useState(false);
   const deleteIconRef = React.useRef(null);
 
@@ -139,6 +140,28 @@ const ResourceCard = ({ resource, onViewDetails, onEdit, onDelete, isAdmin = fal
       setTimeout(() => setIsDeleting(false), 400);
     }
     onDelete?.(resource.id);
+  };
+
+  // Format availability to a concise display
+  const getAvailabilityDisplay = () => {
+    if (!resource.availabilityWindows) return 'Not specified';
+    
+    // Parse the availability string to get days and time
+    const entries = resource.availabilityWindows.split(',').map(e => e.trim());
+    if (entries.length === 0) return 'Not specified';
+    
+    // Extract time from first entry
+    const timeMatch = entries[0].match(/(\d{2}:\d{2})-(\d{2}:\d{2})/);
+    const time = timeMatch ? `${timeMatch[1]}-${timeMatch[2]}` : '';
+    
+    // Get abbreviated day names
+    const dayNames = entries.map(e => {
+      const match = e.match(/^(\w+)/);
+      return match ? match[1].slice(0, 3) : '';
+    }).join(', ');
+    
+    const result = `${dayNames}: ${time}`;
+    return result.length > 30 ? result.substring(0, 27) + '...' : result;
   };
 
   return (
@@ -188,7 +211,7 @@ const ResourceCard = ({ resource, onViewDetails, onEdit, onDelete, isAdmin = fal
       </div>
 
       {/* ── Body ── */}
-      <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+      <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
 
         {/* Capacity */}
         <MetaRow icon={<IconCapacity />} label="Capacity">
@@ -209,8 +232,8 @@ const ResourceCard = ({ resource, onViewDetails, onEdit, onDelete, isAdmin = fal
 
         {/* Availability */}
         <MetaRow icon={<IconClock />} label="Availability">
-          <span style={{ fontSize: '13px', fontWeight: '500', color: '#0B1F3A', lineHeight: '1.4' }}>
-            {resource.availabilityWindows}
+          <span style={{ fontSize: '12px', fontWeight: '600', color: '#0B1F3A', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {getAvailabilityDisplay()}
           </span>
         </MetaRow>
 

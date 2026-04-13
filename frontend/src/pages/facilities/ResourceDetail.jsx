@@ -7,6 +7,84 @@ import { getResourceById, updateResource } from '../../services/resourceService'
  * ResourceDetail Component — Detailed View of a Single Resource
  */
 
+const parseAvailability = (availabilityStr) => {
+  if (!availabilityStr) return [];
+  
+  // Split by comma to get individual day entries
+  const entries = availabilityStr.split(',').map(entry => entry.trim());
+  
+  return entries.map(entry => {
+    // Extract day and time (e.g., "Monday 07:00-17:00")
+    const match = entry.match(/^(.+?)\s+(\d{2}:\d{2})-(\d{2}:\d{2})$/);
+    if (match) {
+      return {
+        day: match[1],
+        startTime: match[2],
+        endTime: match[3],
+        timeRange: `${match[2]}-${match[3]}`
+      };
+    }
+    return null;
+  }).filter(Boolean);
+};
+
+const AvailabilityTable = ({ availabilityStr }) => {
+  const availability = parseAvailability(availabilityStr);
+  
+  if (availability.length === 0) {
+    return <span style={{ fontSize: '13px', color: '#0B1F3A' }}>No availability information</span>;
+  }
+  
+  return (
+    <table style={{
+      width: '100%',
+      borderCollapse: 'collapse',
+      fontSize: '13px',
+      fontFamily: 'inherit',
+    }}>
+      <thead>
+        <tr style={{ borderBottom: '1px solid rgba(11,31,58,0.15)' }}>
+          <th style={{
+            textAlign: 'left',
+            padding: '0.75rem 0',
+            fontWeight: '600',
+            color: '#5A6A82',
+            textTransform: 'uppercase',
+            fontSize: '11px',
+            letterSpacing: '0.04em',
+          }}>Day</th>
+          <th style={{
+            textAlign: 'left',
+            padding: '0.75rem 0',
+            fontWeight: '600',
+            color: '#5A6A82',
+            textTransform: 'uppercase',
+            fontSize: '11px',
+            letterSpacing: '0.04em',
+          }}>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {availability.map((item, idx) => (
+          <tr key={idx} style={{
+            borderBottom: idx < availability.length - 1 ? '1px solid rgba(11,31,58,0.08)' : 'none',
+          }}>
+            <td style={{
+              padding: '0.75rem 0',
+              color: '#0B1F3A',
+              fontWeight: '500',
+            }}>{item.day}</td>
+            <td style={{
+              padding: '0.75rem 0',
+              color: '#0B1F3A',
+            }}>{item.timeRange}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+
 const Ico = ({ type }) => {
   if (type === 'capacity')
     return (
@@ -338,7 +416,7 @@ const ResourceDetail = () => {
       }}>
         <MetricCard icon={<Ico type="capacity" />} label="Capacity" value={`${resource.capacity} people`} />
         <MetricCard icon={<Ico type="location" />} label="Status" value={isActive ? 'ACTIVE' : 'OUT OF SERVICE'} />
-        <MetricCard icon={<Ico type="availability" />} label="Availability" value={resource.availabilityWindows} />
+        <MetricCard icon={<Ico type="location" />} label="Type" value={resource.type.replace(/_/g, ' ')} />
       </div>
 
       {!showForm ? (
@@ -367,7 +445,24 @@ const ResourceDetail = () => {
               <DetaljRow label="Location" value={resource.location} />
               <DetaljRow label="Capacity" value={`${resource.capacity} people`} />
               <DetaljRow label="Status" value={isActive ? 'ACTIVE' : 'OUT OF SERVICE'} />
-              <DetaljRow label="Availability" value={resource.availabilityWindows} />
+              
+              {/* Availability Table */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(120px, 150px) 1fr',
+                gap: '1.5rem',
+                padding: '1rem 0',
+                borderBottom: '1px solid rgba(11,31,58,0.08)',
+                alignItems: 'flex-start',
+              }}>
+                <label style={{ fontSize: '12px', fontWeight: '600', color: '#5A6A82', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Availability
+                </label>
+                <div style={{ width: '100%' }}>
+                  <AvailabilityTable availabilityStr={resource.availabilityWindows} />
+                </div>
+              </div>
+              
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 150px) 1fr', gap: '1.5rem', paddingTop: '1rem' }}>
                 <label style={{ fontSize: '12px', fontWeight: '600', color: '#5A6A82', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Description
