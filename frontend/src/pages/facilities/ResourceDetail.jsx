@@ -8,20 +8,30 @@ import { getResourceById, updateResource } from '../../services/resourceService'
  */
 
 const parseAvailability = (availabilityStr) => {
-  if (!availabilityStr) return [];
+  if (!availabilityStr || availabilityStr.trim() === '') {
+    return [];
+  }
   
   // Split by comma to get individual day entries
-  const entries = availabilityStr.split(',').map(entry => entry.trim());
+  const entries = availabilityStr.split(',').map(entry => entry.trim()).filter(entry => entry.length > 0);
   
   return entries.map(entry => {
-    // Extract day and time (e.g., "Monday 07:00-17:00")
-    const match = entry.match(/^(.+?)\s+(\d{2}:\d{2})-(\d{2}:\d{2})$/);
+    // Extract day and time (e.g., "Monday 07:00-17:00" or "Monday 7:00-17:00")
+    const match = entry.match(/^(\w+)\s+(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
     if (match) {
+      const day = match[1];
+      const startHour = match[2].padStart(2, '0');
+      const startMin = match[3];
+      const endHour = match[4].padStart(2, '0');
+      const endMin = match[5];
+      const startTime = `${startHour}:${startMin}`;
+      const endTime = `${endHour}:${endMin}`;
+      
       return {
-        day: match[1],
-        startTime: match[2],
-        endTime: match[3],
-        timeRange: `${match[2]}-${match[3]}`
+        day,
+        startTime,
+        endTime,
+        timeRange: `${startTime}-${endTime}`
       };
     }
     return null;
@@ -31,8 +41,16 @@ const parseAvailability = (availabilityStr) => {
 const AvailabilityTable = ({ availabilityStr }) => {
   const availability = parseAvailability(availabilityStr);
   
-  if (availability.length === 0) {
-    return <span style={{ fontSize: '13px', color: '#0B1F3A' }}>No availability information</span>;
+  if (!availabilityStr || availability.length === 0) {
+    return (
+      <span style={{ 
+        fontSize: '13px', 
+        color: '#6B7280',
+        fontStyle: 'italic'
+      }}>
+        No availability information provided
+      </span>
+    );
   }
   
   return (

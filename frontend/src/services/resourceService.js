@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8080/api/resources';
+const API_BASE_URL = 'http://localhost:8081/api/resources';
 
 /**
  * Build query string from filter object
@@ -36,7 +36,11 @@ export const getAllResources = async (filters = {}) => {
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const contentType = response.headers.get('content-type');
+      let error = {};
+      if (contentType && contentType.includes('application/json')) {
+        error = await response.json();
+      }
       throw new Error(error.message || `Failed to fetch resources: ${response.statusText}`);
     }
 
@@ -62,7 +66,11 @@ export const getResourceById = async (id) => {
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const contentType = response.headers.get('content-type');
+      let error = {};
+      if (contentType && contentType.includes('application/json')) {
+        error = await response.json();
+      }
       throw new Error(error.message || `Failed to fetch resource: ${response.statusText}`);
     }
 
@@ -89,7 +97,11 @@ export const createResource = async (resourceData) => {
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const contentType = response.headers.get('content-type');
+      let error = {};
+      if (contentType && contentType.includes('application/json')) {
+        error = await response.json();
+      }
       throw new Error(error.message || `Failed to create resource: ${response.statusText}`);
     }
 
@@ -117,7 +129,11 @@ export const updateResource = async (id, resourceData) => {
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const contentType = response.headers.get('content-type');
+      let error = {};
+      if (contentType && contentType.includes('application/json')) {
+        error = await response.json();
+      }
       throw new Error(error.message || `Failed to update resource: ${response.statusText}`);
     }
 
@@ -143,12 +159,16 @@ export const deleteResource = async (id) => {
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const contentType = response.headers.get('content-type');
+      let error = {};
+      if (contentType && contentType.includes('application/json')) {
+        error = await response.json();
+      }
       throw new Error(error.message || `Failed to delete resource: ${response.statusText}`);
     }
 
     // DELETE typically returns 204 No Content or empty 200
-    if (response.status !== 204) {
+    if (response.status !== 204 && response.status !== 200) {
       return await response.json();
     }
   } catch (error) {

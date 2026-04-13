@@ -40,25 +40,78 @@ const parseAvailabilityString = (availabilityStr) => {
     Sunday: { enabled: false, startTime: '09:00', endTime: '17:00' },
   };
 
-  if (!availabilityStr || typeof availabilityStr !== 'string') {
-    return typeof availabilityStr === 'object' ? availabilityStr : defaultAvailability;
+  // If already an object (from state), return it
+  if (!availabilityStr) {
+    return defaultAvailability;
   }
 
+  if (typeof availabilityStr === 'object' && availabilityStr !== null) {
+    // Check if it's already in the correct format
+    if (availabilityStr.Monday && typeof availabilityStr.Monday === 'object') {
+      return availabilityStr;
+    }
+  }
+
+  if (typeof availabilityStr !== 'string') {
+    return defaultAvailability;
+  }
+
+  // First, initialize with all days disabled
+  const result = {
+    Monday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+    Tuesday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+    Wednesday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+    Thursday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+    Friday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+    Saturday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+    Sunday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+  };
+
   // Parse string format like "Monday 09:00-17:00, Tuesday 09:00-17:00"
+  if (availabilityStr.trim() === '') {
+    return defaultAvailability;
+  }
+
   const days = availabilityStr.split(',').map(d => d.trim());
-  const result = { ...defaultAvailability };
 
   days.forEach(dayStr => {
-    const match = dayStr.match(/(\w+)\s+(\d{2}:\d{2})-(\d{2}:\d{2})/);
+    const match = dayStr.match(/^(\w+)\s+(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
     if (match) {
-      const [, day, startTime, endTime] = match;
-      if (result[day]) {
-        result[day] = { enabled: true, startTime, endTime };
+      const dayName = match[1];
+      const startHour = match[2].padStart(2, '0');
+      const startMin = match[3];
+      const endHour = match[4].padStart(2, '0');
+      const endMin = match[5];
+      const startTime = `${startHour}:${startMin}`;
+      const endTime = `${endHour}:${endMin}`;
+      
+      if (result[dayName]) {
+        result[dayName] = { enabled: true, startTime, endTime };
       }
     }
   });
 
   return result;
+};
+
+// Helper function to initialize form data
+const initializeFormData = (initialData) => {
+  if (!initialData) {
+    return {
+      name: '',
+      type: 'LECTURE_HALL',
+      location: '',
+      capacity: 10,
+      availabilityWindows: parseAvailabilityString(null),
+      description: '',
+      status: 'ACTIVE',
+    };
+  }
+
+  return {
+    ...initialData,
+    availabilityWindows: parseAvailabilityString(initialData.availabilityWindows),
+  };
 };
 
 // Weekly Availability Picker Component
@@ -118,6 +171,7 @@ const WeeklyAvailabilityPicker = ({ value, onChange, fieldError }) => {
   };
 
   const formatDisplay = () => {
+    if (!availability) return 'No availability set';
     const enabledDays = daysOfWeek.filter(day => availability[day]?.enabled);
     if (enabledDays.length === 0) return 'No availability set';
     if (enabledDays.length <= 3) return enabledDays.join(', ');
@@ -345,20 +399,14 @@ const WeeklyAvailabilityPicker = ({ value, onChange, fieldError }) => {
 const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
   const isEditMode = Boolean(initialData?.id);
 
-  const [formData, setFormData] = useState(initialData || {
-    name: '',
-    type: 'LECTURE_HALL',
-    location: '',
-    capacity: 10,
-    availabilityWindows: null,
-    description: '',
-    status: 'ACTIVE',
-  });
+  const [formData, setFormData] = useState(() => initializeFormData(initialData));
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
+  const [fieldStatus, setFieldStatus] = useState({});
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -368,6 +416,13 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
     };
   }, []);
 
+  // Update form data when initialData changes
+  useEffect(() => {
+    if (isEditMode && initialData) {
+      setFormData(initializeFormData(initialData));
+    }
+  }, [isEditMode, initialData]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -376,56 +431,79 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
     }));
     setError(null);
     setSuccess(false);
+    setTouchedFields(prev => ({ ...prev, [name]: true }));
 
     // Real-time field validation
     validateField(name, name === 'capacity' ? (value === '' ? '' : parseInt(value, 10)) : value);
   };
 
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouchedFields(prev => ({ ...prev, [name]: true }));
+  };
+
   const validateField = (fieldName, value) => {
     const errors = { ...fieldErrors };
+    const status = { ...fieldStatus };
 
     switch (fieldName) {
       case 'name':
         if (!value || !value.toString().trim()) {
           errors.name = 'Resource name is required';
+          status.name = 'error';
         } else if (value.toString().trim().length < 2) {
-          errors.name = 'Minimum 2 characters';
+          errors.name = 'Minimum 2 characters needed';
+          status.name = 'error';
         } else if (value.toString().trim().length > 100) {
-          errors.name = 'Maximum 100 characters';
+          errors.name = 'Maximum 100 characters allowed';
+          status.name = 'error';
         } else {
           delete errors.name;
+          status.name = 'valid';
         }
         break;
 
       case 'location':
         if (!value || !value.toString().trim()) {
           errors.location = 'Location is required';
+          status.location = 'error';
         } else if (value.toString().trim().length < 3) {
-          errors.location = 'Minimum 3 characters';
+          errors.location = 'Minimum 3 characters needed';
+          status.location = 'error';
         } else if (value.toString().trim().length > 100) {
-          errors.location = 'Maximum 100 characters';
+          errors.location = 'Maximum 100 characters allowed';
+          status.location = 'error';
         } else {
           delete errors.location;
+          status.location = 'valid';
         }
         break;
 
       case 'capacity':
         if (value === '' || value === 0) {
           errors.capacity = 'Capacity is required';
+          status.capacity = 'error';
         } else if (isNaN(value) || value < 1) {
-          errors.capacity = 'Minimum 1 person';
+          errors.capacity = 'Minimum 1 person required';
+          status.capacity = 'error';
         } else if (value > 10000) {
-          errors.capacity = 'Maximum 10,000 people';
+          errors.capacity = 'Maximum 10,000 people allowed';
+          status.capacity = 'error';
         } else {
           delete errors.capacity;
+          status.capacity = 'valid';
         }
         break;
 
       case 'description':
         if (value && value.trim().length > 1000) {
-          errors.description = 'Maximum 1000 characters';
+          errors.description = 'Maximum 1000 characters allowed';
+          status.description = 'error';
         } else {
           delete errors.description;
+          if (value && value.trim().length > 0) {
+            status.description = 'valid';
+          }
         }
         break;
 
@@ -434,6 +512,7 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
     }
 
     setFieldErrors(errors);
+    setFieldStatus(status);
   };
 
   const validate = () => {
@@ -667,10 +746,13 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.375rem' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#0B1F3A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '12px', fontWeight: '600', color: '#0B1F3A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Resource Name
+                {fieldStatus.name === 'valid' && touchedFields.name && (
+                  <span style={{ color: '#10B981', fontSize: '14px' }}>✓</span>
+                )}
               </label>
-              <span style={{ fontSize: '11px', color: '#6B7280' }}>
+              <span style={{ fontSize: '11px', color: fieldErrors.name ? '#DC2626' : '#6B7280' }}>
                 {formData.name ? formData.name.length : 0}/100
               </span>
             </div>
@@ -679,15 +761,16 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
               name="name"
               value={formData.name}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="e.g., Room 101"
               style={{
                 ...inputStyle,
-                borderColor: fieldErrors.name ? '#DC2626' : 'rgba(11,31,58,0.12)',
-                backgroundColor: fieldErrors.name ? '#FEF2F2' : '#FAFBFC',
-                boxShadow: fieldErrors.name ? '0 0 0 3px rgba(220, 38, 38, 0.05)' : 'none',
+                borderColor: fieldErrors.name ? '#DC2626' : (fieldStatus.name === 'valid' && touchedFields.name ? '#10B981' : 'rgba(11,31,58,0.12)'),
+                backgroundColor: fieldErrors.name ? '#FEF2F2' : (fieldStatus.name === 'valid' && touchedFields.name ? '#F0FDF4' : '#FAFBFC'),
+                boxShadow: fieldErrors.name ? '0 0 0 3px rgba(220, 38, 38, 0.05)' : (fieldStatus.name === 'valid' && touchedFields.name ? '0 0 0 3px rgba(16, 185, 129, 0.05)' : 'none'),
               }}
             />
-            {fieldErrors.name && (
+            {fieldErrors.name && touchedFields.name && (
               <span style={{ fontSize: '11px', color: '#EF4444', marginTop: '0.25rem', display: 'block' }}>
                 ⚠ {fieldErrors.name}
               </span>
@@ -703,7 +786,11 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
                 name="type"
                 value={formData.type}
                 onChange={handleChange}
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  borderColor: 'rgba(11,31,58,0.12)',
+                  backgroundColor: '#FAFBFC',
+                }}
               >
                 <option value="LECTURE_HALL">Lecture Hall</option>
                 <option value="LAB">Laboratory</option>
@@ -720,7 +807,11 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  borderColor: 'rgba(11,31,58,0.12)',
+                  backgroundColor: '#FAFBFC',
+                }}
               >
                 <option value="ACTIVE">Active</option>
                 <option value="OUT_OF_SERVICE">Out of Service</option>
@@ -730,10 +821,13 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
 
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.375rem' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#0B1F3A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '12px', fontWeight: '600', color: '#0B1F3A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Location
+                {fieldStatus.location === 'valid' && touchedFields.location && (
+                  <span style={{ color: '#10B981', fontSize: '14px' }}>✓</span>
+                )}
               </label>
-              <span style={{ fontSize: '11px', color: '#6B7280' }}>
+              <span style={{ fontSize: '11px', color: fieldErrors.location ? '#DC2626' : '#6B7280' }}>
                 {formData.location ? formData.location.length : 0}/100
               </span>
             </div>
@@ -742,15 +836,16 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
               name="location"
               value={formData.location}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="e.g., Building A, 2nd Floor"
               style={{
                 ...inputStyle,
-                borderColor: fieldErrors.location ? '#DC2626' : 'rgba(11,31,58,0.12)',
-                backgroundColor: fieldErrors.location ? '#FEF2F2' : '#FAFBFC',
-                boxShadow: fieldErrors.location ? '0 0 0 3px rgba(220, 38, 38, 0.05)' : 'none',
+                borderColor: fieldErrors.location ? '#DC2626' : (fieldStatus.location === 'valid' && touchedFields.location ? '#10B981' : 'rgba(11,31,58,0.12)'),
+                backgroundColor: fieldErrors.location ? '#FEF2F2' : (fieldStatus.location === 'valid' && touchedFields.location ? '#F0FDF4' : '#FAFBFC'),
+                boxShadow: fieldErrors.location ? '0 0 0 3px rgba(220, 38, 38, 0.05)' : (fieldStatus.location === 'valid' && touchedFields.location ? '0 0 0 3px rgba(16, 185, 129, 0.05)' : 'none'),
               }}
             />
-            {fieldErrors.location && (
+            {fieldErrors.location && touchedFields.location && (
               <span style={{ fontSize: '11px', color: '#EF4444', marginTop: '0.25rem', display: 'block' }}>
                 ⚠ {fieldErrors.location}
               </span>
@@ -766,24 +861,28 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
         </legend>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#0B1F3A', marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '12px', fontWeight: '600', color: '#0B1F3A', marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Capacity (people)
+              {fieldStatus.capacity === 'valid' && touchedFields.capacity && (
+                <span style={{ color: '#10B981', fontSize: '14px' }}>✓</span>
+              )}
             </label>
             <input
               type="number"
               name="capacity"
               value={formData.capacity}
               onChange={handleChange}
+              onBlur={handleBlur}
               min="1"
               max="10000"
               style={{
                 ...inputStyle,
-                borderColor: fieldErrors.capacity ? '#DC2626' : 'rgba(11,31,58,0.12)',
-                backgroundColor: fieldErrors.capacity ? '#FEF2F2' : '#FAFBFC',
-                boxShadow: fieldErrors.capacity ? '0 0 0 3px rgba(220, 38, 38, 0.05)' : 'none',
+                borderColor: fieldErrors.capacity ? '#DC2626' : (fieldStatus.capacity === 'valid' && touchedFields.capacity ? '#10B981' : 'rgba(11,31,58,0.12)'),
+                backgroundColor: fieldErrors.capacity ? '#FEF2F2' : (fieldStatus.capacity === 'valid' && touchedFields.capacity ? '#F0FDF4' : '#FAFBFC'),
+                boxShadow: fieldErrors.capacity ? '0 0 0 3px rgba(220, 38, 38, 0.05)' : (fieldStatus.capacity === 'valid' && touchedFields.capacity ? '0 0 0 3px rgba(16, 185, 129, 0.05)' : 'none'),
               }}
             />
-            {fieldErrors.capacity && (
+            {fieldErrors.capacity && touchedFields.capacity && (
               <span style={{ fontSize: '11px', color: '#EF4444', marginTop: '0.25rem', display: 'block' }}>
                 ⚠ {fieldErrors.capacity}
               </span>
@@ -822,10 +921,13 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
         </legend>
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.375rem' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#0B1F3A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '12px', fontWeight: '600', color: '#0B1F3A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Description (Optional)
+              {fieldStatus.description === 'valid' && touchedFields.description && (
+                <span style={{ color: '#10B981', fontSize: '14px' }}>✓</span>
+              )}
             </label>
-            <span style={{ fontSize: '11px', color: '#6B7280' }}>
+            <span style={{ fontSize: '11px', color: fieldErrors.description ? '#DC2626' : '#6B7280' }}>
               {formData.description ? formData.description.length : 0}/1000
             </span>
           </div>
@@ -833,18 +935,19 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
             name="description"
             value={formData.description}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="Add any additional details..."
             style={{
               ...inputStyle,
               minHeight: '110px',
               resize: 'vertical',
               fontFamily: 'inherit',
-              borderColor: fieldErrors.description ? '#DC2626' : 'rgba(11,31,58,0.12)',
-              backgroundColor: fieldErrors.description ? '#FEF2F2' : '#FAFBFC',
-              boxShadow: fieldErrors.description ? '0 0 0 3px rgba(220, 38, 38, 0.05)' : 'none',
+              borderColor: fieldErrors.description ? '#DC2626' : (fieldStatus.description === 'valid' && touchedFields.description ? '#10B981' : 'rgba(11,31,58,0.12)'),
+              backgroundColor: fieldErrors.description ? '#FEF2F2' : (fieldStatus.description === 'valid' && touchedFields.description ? '#F0FDF4' : '#FAFBFC'),
+              boxShadow: fieldErrors.description ? '0 0 0 3px rgba(220, 38, 38, 0.05)' : (fieldStatus.description === 'valid' && touchedFields.description ? '0 0 0 3px rgba(16, 185, 129, 0.05)' : 'none'),
             }}
           />
-          {fieldErrors.description && (
+          {fieldErrors.description && touchedFields.description && (
             <span style={{ fontSize: '11px', color: '#EF4444', marginTop: '0.25rem', display: 'block' }}>
               ⚠ {fieldErrors.description}
             </span>
