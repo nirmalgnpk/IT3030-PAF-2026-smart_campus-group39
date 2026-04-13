@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ResourceForm from './ResourceForm';
-import { getResourceById, deleteResource } from '../../services/resourceService';
+import { getResourceById } from '../../services/resourceService';
 
 /**
  * ResourceDetail Component — Detailed View of a Single Resource
@@ -100,7 +100,7 @@ const Spinner = ({ size = 24, color = '#0B1F3A' }) => (
   </svg>
 );
 
-const NavBar = ({ resourceName, onBack, onEdit, onDelete, isDeleteLoading }) => (
+const NavBar = ({ resourceName, onBack, onEdit, onToggleActive, isActive, isLoading }) => (
   <div style={{
     display: 'flex',
     alignItems: 'center',
@@ -161,31 +161,31 @@ const NavBar = ({ resourceName, onBack, onEdit, onDelete, isDeleteLoading }) => 
         Edit
       </button>
       <button
-        onClick={onDelete}
-        disabled={isDeleteLoading}
+        onClick={onToggleActive}
+        disabled={isLoading}
         style={{
-          backgroundColor: isDeleteLoading ? '#f3f4f6' : '#E24B4A',
-          color: isDeleteLoading ? '#9ca3af' : 'white',
+          backgroundColor: isLoading ? '#f3f4f6' : (isActive ? '#E24B4A' : '#22C55E'),
+          color: isLoading ? '#9ca3af' : 'white',
           fontSize: '12px',
           fontWeight: '600',
           padding: '0.5rem 1rem',
           borderRadius: '8px',
           border: 'none',
-          cursor: isDeleteLoading ? 'not-allowed' : 'pointer',
+          cursor: isLoading ? 'not-allowed' : 'pointer',
           transition: 'all 180ms ease',
           display: 'flex',
           alignItems: 'center',
           gap: '0.375rem',
         }}
         onMouseEnter={(e) => {
-          if (!isDeleteLoading) e.target.style.backgroundColor = '#C32F2A';
+          if (!isLoading) e.target.style.backgroundColor = isActive ? '#C32F2A' : '#16A34A';
         }}
         onMouseLeave={(e) => {
-          if (!isDeleteLoading) e.target.style.backgroundColor = '#E24B4A';
+          if (!isLoading) e.target.style.backgroundColor = isActive ? '#E24B4A' : '#22C55E';
         }}
       >
-        {isDeleteLoading ? <Spinner size={14} color="#6b7280" /> : null}
-        Delete
+        {isLoading ? <Spinner size={14} color="#6b7280" /> : null}
+        {isActive ? 'Deactivate' : 'Activate'}
       </button>
     </div>
   </div>
@@ -198,7 +198,8 @@ const ResourceDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isActive, setIsActive] = useState(true);
+  const [toggleLoading, setToggleLoading] = useState(false);
 
   const fetchResource = useCallback(async () => {
     if (!id) return;
@@ -218,15 +219,17 @@ const ResourceDetail = () => {
     fetchResource();
   }, [id, fetchResource]);
 
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this resource?')) return;
-    setDeleteLoading(true);
+  const handleToggleActive = async () => {
+    setToggleLoading(true);
     try {
-      await deleteResource(id);
-      navigate('/facilities');
+      // Toggle the active state
+      setIsActive(!isActive);
+      setTimeout(() => {
+        setToggleLoading(false);
+      }, 500);
     } catch (err) {
-      alert('Failed to delete resource: ' + (err.message || 'Unknown error'));
-      setDeleteLoading(false);
+      alert('Failed to update resource status: ' + (err.message || 'Unknown error'));
+      setToggleLoading(false);
     }
   };
 
@@ -308,8 +311,9 @@ const ResourceDetail = () => {
         resourceName={resource.name}
         onBack={() => navigate('/facilities')}
         onEdit={() => setShowForm(true)}
-        onDelete={handleDelete}
-        isDeleteLoading={deleteLoading}
+        onToggleActive={handleToggleActive}
+        isActive={isActive}
+        isLoading={toggleLoading}
       />
 
       {/* ── Metrics ── */}
@@ -323,7 +327,7 @@ const ResourceDetail = () => {
         },
       }}>
         <MetricCard icon={<Ico type="capacity" />} label="Capacity" value={`${resource.capacity} people`} />
-        <MetricCard icon={<Ico type="location" />} label="Status" value={resource.status.replace(/_/g, ' ')} />
+        <MetricCard icon={<Ico type="location" />} label="Status" value={isActive ? 'ACTIVE' : 'OUT OF SERVICE'} />
         <MetricCard icon={<Ico type="availability" />} label="Availability" value={resource.availabilityWindows} />
       </div>
 
@@ -352,7 +356,7 @@ const ResourceDetail = () => {
               <DetaljRow label="Type" value={resource.type.replace(/_/g, ' ')} />
               <DetaljRow label="Location" value={resource.location} />
               <DetaljRow label="Capacity" value={`${resource.capacity} people`} />
-              <DetaljRow label="Status" value={resource.status.replace(/_/g, ' ')} />
+              <DetaljRow label="Status" value={isActive ? 'ACTIVE' : 'OUT OF SERVICE'} />
               <DetaljRow label="Availability" value={resource.availabilityWindows} />
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 150px) 1fr', gap: '1.5rem', paddingTop: '1rem' }}>
                 <label style={{ fontSize: '12px', fontWeight: '600', color: '#5A6A82', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
