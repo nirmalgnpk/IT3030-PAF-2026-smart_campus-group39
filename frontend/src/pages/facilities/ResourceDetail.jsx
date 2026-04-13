@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ResourceForm from './ResourceForm';
-import { getResourceById } from '../../services/resourceService';
+import { getResourceById, updateResource } from '../../services/resourceService';
 
 /**
  * ResourceDetail Component — Detailed View of a Single Resource
@@ -222,11 +222,21 @@ const ResourceDetail = () => {
   const handleToggleActive = async () => {
     setToggleLoading(true);
     try {
-      // Toggle the active state
+      // Determine new status
+      const newStatus = isActive ? 'OUT_OF_SERVICE' : 'ACTIVE';
+      
+      // Update resource with new status
+      const updatedResource = {
+        ...resource,
+        status: newStatus
+      };
+      
+      // Call API to update backend
+      await updateResource(id, updatedResource);
+      
+      // Toggle the active state after successful update
       setIsActive(!isActive);
-      setTimeout(() => {
-        setToggleLoading(false);
-      }, 500);
+      setToggleLoading(false);
     } catch (err) {
       alert('Failed to update resource status: ' + (err.message || 'Unknown error'));
       setToggleLoading(false);
