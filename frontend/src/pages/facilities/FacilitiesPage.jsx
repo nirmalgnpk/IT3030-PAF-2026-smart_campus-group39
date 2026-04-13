@@ -18,7 +18,7 @@ const FacilitiesPage = ({ isAdmin = false }) => {
       <div style={{ backgroundColor: '#0B1F3A', position: 'relative', overflow: 'hidden', backgroundImage: 'url(/image/56.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
         
         {/* Dark overlay */}
-        <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.85)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.65)', pointerEvents: 'none' }} />
 
         {/* Subtle geometric decoration */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
@@ -31,26 +31,26 @@ const FacilitiesPage = ({ isAdmin = false }) => {
         {/* Accent gradient bar at very top */}
         <div style={{ height: '4px', width: '100%', background: 'linear-gradient(to right, #1A3F8F, #C8963E, #1D9E75)' }} />
 
-        <div style={{ position: 'relative', maxWidth: '80rem', margin: '0 auto', padding: '2.5rem 1rem', display: 'flex', flexDirection: 'column', gap: 0, zIndex: 10 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ position: 'relative', maxWidth: '80rem', margin: '0 auto', padding: '2.5rem 1rem', display: 'flex', flexDirection: 'column', gap: 0, zIndex: 10, textAlign: 'center', alignItems: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center' }}>
 
             <div>
               {/* Eyebrow */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <div style={{ width: '24px', height: '24px', borderRadius: '6px', backgroundColor: 'rgba(200,150,62,0.2)', border: '1px solid rgba(200,150,62,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg style={{ width: '12px', height: '12px' }} viewBox="0 0 24 24" fill="none" stroke="#C8963E"
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', justifyContent: 'center' }}>
+                <div style={{ width: '30px', height: '30px', borderRadius: '6px', backgroundColor: 'rgba(200,150,62,0.2)', border: '1px solid rgba(200,150,62,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg style={{ width: '15px', height: '15px' }} viewBox="0 0 24 24" fill="none" stroke="#C8963E"
                     strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
                     <polyline points="9 22 9 12 15 12 15 22"/>
                   </svg>
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: 'bold', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C8963E' }}>
+                <span style={{ fontSize: '13px', fontWeight: 'bold', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C8963E' }}>
                   Smart Campus
                 </span>
               </div>
 
               {/* Title */}
-              <h1 style={{ fontSize: 'clamp(28px, 5vw, 36px)', fontWeight: 'bold', color: 'white', lineHeight: 'tight', fontFamily: 'Syne, sans-serif' }}>
+              <h1 style={{ fontSize: 'clamp(36px, 7vw, 56px)', fontWeight: 'bold', color: 'white', lineHeight: 'tight', fontFamily: 'Syne, sans-serif' }}>
                 Campus Facilities
                 <span style={{ color: '#C8963E' }}> & </span>
                 Assets
@@ -61,31 +61,31 @@ const FacilitiesPage = ({ isAdmin = false }) => {
             </div>
 
             {/* Stats row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'center' }}>
               {stats.map(({ label, value, icon }) => (
                 <div key={label}
-                  style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '0.75rem 1rem', textAlign: 'center', minWidth: '80px' }}>
+                  style={{ backgroundColor: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: '12px', padding: '0.75rem 1rem', textAlign: 'center', width: '90px', height: '90px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.375rem' }}>
-                    <svg style={{ width: '14px', height: '14px', color: 'rgba(255,255,255,0.4)' }} viewBox="0 0 24 24" fill="none"
+                    <svg style={{ width: '14px', height: '14px', color: 'rgba(255,255,255,0.85)' }} viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       {icon}
                     </svg>
                   </div>
                   <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', lineHeight: 'none', fontFamily: 'Syne, sans-serif' }}>{value}</div>
-                  <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginTop: '0.125rem' }}>{label}</div>
+                  <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.8)', marginTop: '0.125rem' }}>{label}</div>
                 </div>
               ))}
 
               {isAdmin && (
-                <div style={{ backgroundColor: 'rgba(200,150,62,0.15)', border: '1px solid rgba(200,150,62,0.3)', borderRadius: '12px', padding: '0.75rem 1rem', textAlign: 'center', minWidth: '80px' }}>
+                <div style={{ backgroundColor: 'rgba(200,150,62,0.50)', border: '1px solid rgba(200,150,62,0.65)', borderRadius: '12px', padding: '0.75rem 1rem', textAlign: 'center', width: '90px', height: '90px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.375rem' }}>
-                    <svg style={{ width: '14px', height: '14px', color: 'rgba(200,150,62,0.7)' }} viewBox="0 0 24 24" fill="none"
+                    <svg style={{ width: '14px', height: '14px', color: 'rgba(200,150,62,0.95)' }} viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                     </svg>
                   </div>
                   <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#C8963E', lineHeight: 'none', fontFamily: 'Syne, sans-serif' }}>Admin</div>
-                  <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(200,150,62,0.6)', marginTop: '0.125rem' }}>Mode</div>
+                  <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(200,150,62,0.9)', marginTop: '0.125rem' }}>Mode</div>
                 </div>
               )}
             </div>

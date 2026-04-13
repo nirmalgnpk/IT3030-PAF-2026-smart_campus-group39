@@ -208,6 +208,11 @@ const ResourceList = ({ isAdmin = true }) => {
                       setSelectedResource(resource);
                       setShowForm(true);
                     }}
+                    onDelete={(resourceId) => {
+                      if (window.confirm('Are you sure you want to delete this resource?')) {
+                        handleDelete(resourceId);
+                      }
+                    }}
                     isAdmin={isAdmin}
                   />
 
