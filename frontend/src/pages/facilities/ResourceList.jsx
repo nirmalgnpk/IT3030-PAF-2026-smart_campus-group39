@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ResourceCard from './ResourceCard';
 import ResourceFilter from './ResourceFilter';
 import ResourceForm from './ResourceForm';
+import ResourceDetailModal from './ResourceDetailModal';
 import { getAllResources, deleteResource } from '../../services/resourceService';
 
 /**
@@ -40,6 +41,7 @@ const ResourceList = ({ isAdmin = true }) => {
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [selectedResource, setSelectedResource] = useState(null);
+  const [selectedDetailResourceId, setSelectedDetailResourceId] = useState(null);
   const [filters, setFilters] = useState({
     type: '',
     status: '',
@@ -203,7 +205,7 @@ const ResourceList = ({ isAdmin = true }) => {
                 <div key={resource.id} style={{ position: 'relative' }}>
                   <ResourceCard
                     resource={resource}
-                    onViewDetails={(resourceId) => navigate(`/facilities/${resourceId}`)}
+                    onViewDetails={(resourceId) => setSelectedDetailResourceId(resourceId)}
                     onEdit={(resourceId) => {
                       setSelectedResource(resource);
                       setShowForm(true);
@@ -347,6 +349,15 @@ const ResourceList = ({ isAdmin = true }) => {
             />
           </div>
         </div>
+      )}
+
+      {/* ── Detail View Modal ── */}
+      {selectedDetailResourceId && (
+        <ResourceDetailModal
+          resourceId={selectedDetailResourceId}
+          onClose={() => setSelectedDetailResourceId(null)}
+          isAdmin={isAdmin}
+        />
       )}
     </div>
   );
