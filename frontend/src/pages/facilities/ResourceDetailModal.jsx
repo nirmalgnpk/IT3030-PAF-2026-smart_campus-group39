@@ -155,7 +155,7 @@ const STATUS_CONFIG = {
 const DetailRow = ({ label, value }) => (
   <div style={{
     display: 'grid',
-    gridTemplateColumns: 'minmax(120px, 150px) 1fr',
+    gridTemplateColumns: 'minmax(150px, 200px) 1fr',
     gap: '1.5rem',
     padding: '1rem 0',
     borderBottom: '1px solid rgba(11,31,58,0.08)',
@@ -339,7 +339,7 @@ const ResourceDetailModal = ({ resourceId, onClose, isAdmin = false }) => {
           onClick={(e) => e.stopPropagation()}
           style={{
             width: '100%',
-            maxWidth: '700px',
+            maxWidth: '650px',
           }}
         >
           <ResourceForm
@@ -382,7 +382,7 @@ const ResourceDetailModal = ({ resourceId, onClose, isAdmin = false }) => {
         className="resource-detail-modal-content"
         style={{
           width: '100%',
-          maxWidth: '700px',
+          maxWidth: '650px',
           backgroundColor: '#FFFFFF',
           borderRadius: '18px',
           boxShadow: '0 25px 50px rgba(11, 31, 58, 0.15), 0 0 1px rgba(11, 31, 58, 0.05)',
@@ -474,7 +474,7 @@ const ResourceDetailModal = ({ resourceId, onClose, isAdmin = false }) => {
             {/* Availability Table */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'minmax(120px, 150px) 1fr',
+              gridTemplateColumns: 'minmax(150px, 200px) 1fr',
               gap: '1.5rem',
               padding: '1rem 0',
               borderBottom: '1px solid rgba(11,31,58,0.08)',
@@ -488,7 +488,7 @@ const ResourceDetailModal = ({ resourceId, onClose, isAdmin = false }) => {
               </div>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 150px) 1fr', gap: '1.5rem', paddingTop: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 200px) 1fr', gap: '1.5rem', paddingTop: '1rem' }}>
               <label style={{ fontSize: '12px', fontWeight: '600', color: '#5A6A82', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Description
               </label>
@@ -500,17 +500,16 @@ const ResourceDetailModal = ({ resourceId, onClose, isAdmin = false }) => {
         </div>
 
         {/* ── Footer ── */}
-        <div style={{ padding: '1.5rem 2rem', backgroundColor: '#F7F8FC', borderTop: '1px solid rgba(11,31,58,0.10)', borderBottomLeftRadius: '18px', borderBottomRightRadius: '18px', display: 'flex', gap: '0.875rem' }}>
+        <div style={{ padding: '0.75rem 2rem', backgroundColor: '#F7F8FC', borderTop: '1px solid rgba(11,31,58,0.10)', borderBottomLeftRadius: '18px', borderBottomRightRadius: '18px', display: 'flex', justifyContent: 'center', gap: '0.875rem' }}>
           <button
             onClick={onClose}
             style={{
-              flex: 1,
               backgroundColor: 'white',
               color: '#0B1F3A',
-              fontSize: '13px',
+              fontSize: '12px',
               fontWeight: '700',
-              padding: '0.875rem 1.5rem',
-              borderRadius: '12px',
+              padding: '0.375rem 1.5rem',
+              borderRadius: '6px',
               border: '1.5px solid rgba(11,31,58,0.15)',
               cursor: 'pointer',
               transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
