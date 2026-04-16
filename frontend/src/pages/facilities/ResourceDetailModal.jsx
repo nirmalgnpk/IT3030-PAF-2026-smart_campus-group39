@@ -7,14 +7,24 @@ import ResourceForm from './ResourceForm';
  * Displays on top of facilities page with dark overlay background
  */
 
-// Add scrollbar styling - hidden
+// Add scrollbar styling
 const scrollbarStyle = `
   .resource-detail-modal-content::-webkit-scrollbar {
-    display: none !important;
+    width: 8px;
+  }
+  .resource-detail-modal-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .resource-detail-modal-content::-webkit-scrollbar-thumb {
+    background: rgba(11, 31, 58, 0.2);
+    border-radius: 4px;
+  }
+  .resource-detail-modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(11, 31, 58, 0.3);
   }
   .resource-detail-modal-content {
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(11, 31, 58, 0.2) transparent;
   }
 `;
 

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import FacilitiesPage from './pages/facilities/FacilitiesPage';
-import ResourceDetail from './pages/facilities/ResourceDetail';
 
 /**
  * App Component
@@ -16,7 +15,6 @@ function App() {
       <Routes>
         {/* Facilities Module Routes */}
         <Route path="/facilities" element={<FacilitiesPage isAdmin={isAdmin} />} />
-        <Route path="/facilities/:id" element={<ResourceDetail isAdmin={isAdmin} />} />
 
         {/* Add your other routes here */}
         <Route 
