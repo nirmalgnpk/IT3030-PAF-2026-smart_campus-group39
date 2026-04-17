@@ -891,7 +891,7 @@ const ResourceForm = ({ initialData = null, onSubmit, onCancel }) => {
 
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#0B1F3A', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.375rem' }}>
-              Weekly Availability (Optional)
+              Weekly Availability
             </label>
             <WeeklyAvailabilityPicker
               value={formData.availabilityWindows}
