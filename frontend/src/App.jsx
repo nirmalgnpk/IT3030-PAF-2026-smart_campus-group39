@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import FacilitiesPage from './pages/facilities/FacilitiesPage';
 import ResourceDetail from './pages/facilities/ResourceDetail';
 import Home from "./pages/Home/Home";
+import TicketPage from "./pages/tickets/TicketPage";
 
 /**
  * App Component
@@ -21,6 +22,7 @@ function App() {
 
           {/* Home Route */}
           <Route path="/" element={<Home />} />
+          <Route path="/tickets" element={<TicketPage />} />
         </Routes>
       </BrowserRouter>
   );
