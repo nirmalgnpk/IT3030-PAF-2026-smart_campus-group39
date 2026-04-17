@@ -5,6 +5,8 @@ import axios from "axios";
 import {
     HiOutlineMail,
     HiOutlineLockClosed,
+    HiOutlineUser,
+    HiOutlineAtSymbol,
     HiOutlineEye,
     HiOutlineEyeOff,
     HiExclamationCircle,
@@ -69,20 +71,22 @@ const STUDENT_ROLE = {
     color: "#1d4ed8",
 };
 
-export default function Login() {
+export default function Register() {
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    const [email, setEmail]             = useState("");
-    const [password, setPassword]       = useState("");
-    const [loading, setLoading]         = useState(false);
+    const [form, setForm] = useState({
+        name: "", userName: "", email: "", password: "", confirmPassword: "",
+    });
     const [errors, setErrors]           = useState({});
     const [serverError, setServerError] = useState("");
+    const [loading, setLoading]         = useState(false);
     const [selectedRole, setSelectedRole] = useState(null);
     const [showRolePicker, setShowRolePicker] = useState(false);
     const [pwVisible, setPwVisible]     = useState(false);
+    const [cpwVisible, setCpwVisible]   = useState(false);
 
-    const emailLower = email.trim().toLowerCase();
+    const emailLower = form.email.trim().toLowerCase();
     const isStudent  = emailLower.endsWith(SLIIT_DOMAIN) && emailLower.length > SLIIT_DOMAIN.length;
     const hasEmail   = emailLower.length > 3 && emailLower.includes("@");
 
@@ -96,36 +100,59 @@ export default function Login() {
         } else {
             setShowRolePicker(false);
         }
-    }, [email]);
+    }, [form.email]);
+
+    function set(key) {
+        return (e) => {
+            setForm(p => ({ ...p, [key]: e.target.value }));
+            setErrors(p => ({ ...p, [key]: null }));
+        };
+    }
 
     function validate() {
         const e = {};
-        const emailErr = validateEmail(email);
-        if (emailErr) e.email = emailErr;
-        if (!password) e.password = "Password is required.";
+        if (!form.name.trim())       e.name = "Full name is required.";
+        if (!form.userName.trim())   e.userName = "Username is required.";
+        if (!form.email.trim())      e.email = "Email is required.";
+        else {
+            const emailError = validateEmail(form.email);
+            if (emailError) e.email = emailError;
+        }
+        if (!selectedRole)           e.role = "Please select a role.";
+        if (!form.password)          e.password = "Password is required.";
+        else if (form.password.length < 8) e.password = "Password must be at least 8 characters.";
+        if (form.password !== form.confirmPassword)
+            e.confirmPassword = "Passwords do not match.";
         return e;
     }
 
-    async function handleLogin(evt) {
+    async function handleRegister(evt) {
         evt.preventDefault();
         setServerError("");
         const e = validate();
         setErrors(e);
         if (Object.keys(e).length) return;
+
         setLoading(true);
         try {
-            const { data } = await axios.post("http://localhost:8080/api/auth/login", {
-                email: email.trim().toLowerCase(),
-                password,
+            const { data } = await axios.post("http://localhost:8080/api/auth/register", {
+                name:      form.name.trim(),
+                userName:  form.userName.trim(),
+                email:     form.email.trim().toLowerCase(),
+                password:  form.password,
+                role:      selectedRole,
             });
             login(data);
-            navigate(data.role === "ADMIN" ? "/admin/dashboard" : "/dashboard");
+            navigate("/dashboard");
         } catch (err) {
-            setServerError(err.response?.data?.message || "Invalid email or password.");
+            const msg = err.response?.data?.message;
+            setServerError(msg || "Registration failed. Please try again.");
         } finally {
             setLoading(false);
         }
     }
+
+    const inp = (key) => ({ ...css.input, ...(errors[key] ? css.inputErr : {}) });
 
     return (
         <>
@@ -134,7 +161,6 @@ export default function Login() {
                 {/* ── Left Panel ── */}
                 <div style={css.leftPanel}>
                     <div style={css.leftInner}>
-                        {/* Decorative circles */}
                         <div style={css.circleTopRight} />
                         <div style={css.circleMidLeft} />
                         <div style={css.circleBottomRight} />
@@ -147,13 +173,26 @@ export default function Login() {
                                 </div>
                                 <span style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>Smart Campus</span>
                             </div>
-                            <h2 style={css.leftHeading}>Welcome Back!</h2>
+                            <h2 style={css.leftHeading}>Join Smart Campus</h2>
                             <p style={css.leftSubtext}>
-                                Sign in to manage your campus resources, track maintenance requests, and stay connected with your community.
+                                Create your account to submit maintenance requests, access campus resources, and collaborate with your team.
                             </p>
                             <div style={css.leftBadge}>
                                 <HiCheckCircle size={16} color="#fff" />
                                 <span>Secure SLIIT campus portal</span>
+                            </div>
+
+                            <div style={css.featureList}>
+                                {[
+                                    "Submit & track maintenance requests",
+                                    "Access campus facilities online",
+                                    "Real-time notifications & updates",
+                                ].map((f, i) => (
+                                    <div key={i} style={css.featureItem}>
+                                        <HiCheckCircle size={15} color="rgba(255,255,255,0.9)" />
+                                        <span>{f}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -169,8 +208,8 @@ export default function Login() {
                             <span style={css.logoText}>Smart Campus</span>
                         </div>
 
-                        <h1 style={css.title}>Sign in</h1>
-                        <p style={css.subtitle}>Enter your credentials to continue</p>
+                        <h1 style={css.title}>Create an account</h1>
+                        <p style={css.subtitle}>Fill in your details to get started</p>
 
                         {serverError && (
                             <div style={css.serverError}>
@@ -179,23 +218,42 @@ export default function Login() {
                             </div>
                         )}
 
-                        <form onSubmit={handleLogin} noValidate>
+                        <form onSubmit={handleRegister} noValidate>
+                            {/* Name + Username row */}
+                            <div style={css.row}>
+                                <div style={css.fieldGroup}>
+                                    <label style={css.label}>Full name</label>
+                                    <div style={css.inputWrap}>
+                                        <span style={css.inputIcon}><HiOutlineUser size={15} color="#94a3b8" /></span>
+                                        <input style={inp("name")} placeholder="John Doe" onChange={set("name")} />
+                                    </div>
+                                    {errors.name && <p style={css.errText}>{errors.name}</p>}
+                                </div>
+                                <div style={css.fieldGroup}>
+                                    <label style={css.label}>Username</label>
+                                    <div style={css.inputWrap}>
+                                        <span style={css.inputIcon}><HiOutlineAtSymbol size={15} color="#94a3b8" /></span>
+                                        <input style={inp("userName")} placeholder="johndoe" onChange={set("userName")} />
+                                    </div>
+                                    {errors.userName && <p style={css.errText}>{errors.userName}</p>}
+                                </div>
+                            </div>
+
                             {/* Email */}
                             <div style={css.fieldGroup}>
                                 <label style={css.label}>Email address</label>
                                 <div style={css.inputWrap}>
-                                    <span style={css.inputIcon}><HiOutlineMail size={16} color="#94a3b8" /></span>
+                                    <span style={css.inputIcon}><HiOutlineMail size={15} color="#94a3b8" /></span>
                                     <input
-                                        style={{ ...css.input, ...(errors.email ? css.inputErr : {}) }}
-                                        type="email"
+                                        style={{ ...inp("email"), paddingLeft: 36 }}
                                         placeholder="your@email.com"
-                                        value={email}
-                                        onChange={(e) => { setEmail(e.target.value); setErrors(p => ({ ...p, email: null })); }}
+                                        onChange={set("email")}
                                         autoComplete="email"
                                     />
                                 </div>
                                 {errors.email && <p style={css.errText}>{errors.email}</p>}
 
+                                {/* Role auto-detect / picker */}
                                 {isStudent && (
                                     <div style={{ ...css.roleChip, background: STUDENT_ROLE.bg, borderColor: STUDENT_ROLE.border }}>
                                         <STUDENT_ROLE.Icon size={16} color={STUDENT_ROLE.color} />
@@ -234,33 +292,51 @@ export default function Login() {
                                                 </button>
                                             ))}
                                         </div>
+                                        {errors.role && <p style={{ ...css.errText, marginTop: 6 }}>{errors.role}</p>}
                                     </div>
                                 )}
                             </div>
 
                             {/* Password */}
                             <div style={css.fieldGroup}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                                    <label style={css.label}>Password</label>
-                                    <Link to="/forgot-password" style={css.forgotLink}>Forgot password?</Link>
-                                </div>
+                                <label style={css.label}>Password</label>
                                 <div style={css.inputWrap}>
-                                    <span style={css.inputIcon}><HiOutlineLockClosed size={16} color="#94a3b8" /></span>
+                                    <span style={css.inputIcon}><HiOutlineLockClosed size={15} color="#94a3b8" /></span>
                                     <input
-                                        style={{ ...css.input, ...(errors.password ? css.inputErr : {}) }}
                                         type={pwVisible ? "text" : "password"}
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={(e) => { setPassword(e.target.value); setErrors(p => ({ ...p, password: null })); }}
-                                        autoComplete="current-password"
+                                        style={{ ...inp("password"), paddingLeft: 36 }}
+                                        placeholder="Min. 8 characters"
+                                        onChange={set("password")}
+                                        autoComplete="new-password"
                                     />
                                     <button type="button" onClick={() => setPwVisible(v => !v)} style={css.eyeBtn}>
                                         {pwVisible
-                                            ? <HiOutlineEyeOff size={16} color="#94a3b8" />
-                                            : <HiOutlineEye size={16} color="#94a3b8" />}
+                                            ? <HiOutlineEyeOff size={15} color="#94a3b8" />
+                                            : <HiOutlineEye size={15} color="#94a3b8" />}
                                     </button>
                                 </div>
                                 {errors.password && <p style={css.errText}>{errors.password}</p>}
+                            </div>
+
+                            {/* Confirm Password */}
+                            <div style={css.fieldGroup}>
+                                <label style={css.label}>Confirm password</label>
+                                <div style={css.inputWrap}>
+                                    <span style={css.inputIcon}><HiOutlineLockClosed size={15} color="#94a3b8" /></span>
+                                    <input
+                                        type={cpwVisible ? "text" : "password"}
+                                        style={{ ...inp("confirmPassword"), paddingLeft: 36 }}
+                                        placeholder="Repeat your password"
+                                        onChange={set("confirmPassword")}
+                                        autoComplete="new-password"
+                                    />
+                                    <button type="button" onClick={() => setCpwVisible(v => !v)} style={css.eyeBtn}>
+                                        {cpwVisible
+                                            ? <HiOutlineEyeOff size={15} color="#94a3b8" />
+                                            : <HiOutlineEye size={15} color="#94a3b8" />}
+                                    </button>
+                                </div>
+                                {errors.confirmPassword && <p style={css.errText}>{errors.confirmPassword}</p>}
                             </div>
 
                             <button
@@ -268,33 +344,13 @@ export default function Login() {
                                 style={{ ...css.submitBtn, ...(loading ? css.submitDisabled : {}) }}
                                 disabled={loading}
                             >
-                                {loading ? "Signing in…" : "Sign in →"}
+                                {loading ? "Creating account…" : "Create account →"}
                             </button>
                         </form>
 
-                        <div style={css.divider}>
-                            <span style={css.divLine} />
-                            <span style={css.divText}>OR</span>
-                            <span style={css.divLine} />
-                        </div>
-
-                        <button
-                            type="button"
-                            style={css.googleBtn}
-                            onClick={() => window.location.href = "http://localhost:8080/oauth2/authorization/google"}
-                        >
-                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                            </svg>
-                            Continue with Google
-                        </button>
-
-                        <p style={css.registerRow}>
-                            Don't have an account?{" "}
-                            <Link to="/register" style={css.registerLink}>Create one</Link>
+                        <p style={css.loginRow}>
+                            Already have an account?{" "}
+                            <Link to="/login" style={css.loginLink}>Sign in</Link>
                         </p>
                     </div>
                 </div>
@@ -323,7 +379,6 @@ const css = {
         justifyContent: "center",
     },
     leftInner: { position: "relative", zIndex: 2, padding: "3rem 2.5rem", width: "100%" },
-    /* Decorative circles */
     circleTopRight: {
         position: "absolute", top: "-80px", right: "-80px",
         width: 300, height: 300, borderRadius: "50%",
@@ -361,7 +416,7 @@ const css = {
     },
     leftSubtext: {
         fontSize: 14, color: "rgba(255,255,255,0.8)",
-        lineHeight: 1.65, marginBottom: 32, maxWidth: 300,
+        lineHeight: 1.65, marginBottom: 24, maxWidth: 300,
     },
     leftBadge: {
         display: "inline-flex", alignItems: "center", gap: 7,
@@ -369,6 +424,12 @@ const css = {
         borderRadius: 30, padding: "7px 14px",
         fontSize: 13, color: "#fff", fontWeight: 500,
         border: "1px solid rgba(255,255,255,0.2)",
+        marginBottom: 28,
+    },
+    featureList: { display: "flex", flexDirection: "column", gap: 10 },
+    featureItem: {
+        display: "flex", alignItems: "center", gap: 9,
+        fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 400,
     },
 
     /* ── Right Panel ── */
@@ -385,13 +446,13 @@ const css = {
         background: "#fff",
         borderRadius: 20,
         border: "1px solid #e8edf2",
-        padding: "2.5rem 2.25rem",
+        padding: "2.25rem 2.25rem",
         width: "100%",
-        maxWidth: 420,
+        maxWidth: 440,
         boxShadow: "0 4px 40px rgba(0,0,0,0.06)",
     },
 
-    logoRow: { display: "flex", alignItems: "center", gap: 10, marginBottom: "1.75rem" },
+    logoRow: { display: "flex", alignItems: "center", gap: 10, marginBottom: "1.5rem" },
     logoMark: {
         width: 36, height: 36, borderRadius: 10,
         background: "linear-gradient(135deg, #1e293b, #334155)",
@@ -399,17 +460,19 @@ const css = {
         boxShadow: "0 2px 8px rgba(30,41,59,0.3)",
     },
     logoText: { fontSize: 15, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px" },
-    title: { fontSize: 26, fontWeight: 700, color: "#0f172a", marginBottom: 4, letterSpacing: "-0.5px" },
-    subtitle: { fontSize: 14, color: "#64748b", marginBottom: "1.75rem" },
+    title: { fontSize: 24, fontWeight: 700, color: "#0f172a", marginBottom: 4, letterSpacing: "-0.5px" },
+    subtitle: { fontSize: 14, color: "#64748b", marginBottom: "1.5rem" },
+
+    row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 0 },
+    fieldGroup: { marginBottom: "1rem" },
     label: { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 },
-    fieldGroup: { marginBottom: "1.1rem" },
     inputWrap: { position: "relative", display: "flex", alignItems: "center" },
     inputIcon: {
         position: "absolute", left: 11, pointerEvents: "none",
         display: "flex", alignItems: "center",
     },
     input: {
-        width: "100%", padding: "10px 40px 10px 36px",
+        width: "100%", padding: "9px 38px 9px 36px",
         borderRadius: 10, border: "1.5px solid #e2e8f0",
         fontSize: 14, color: "#0f172a", outline: "none",
         fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
@@ -422,6 +485,7 @@ const css = {
         cursor: "pointer", padding: 2, lineHeight: 1, display: "flex", alignItems: "center",
     },
     errText: { fontSize: 12, color: "#dc2626", marginTop: 4 },
+
     roleChip: {
         display: "flex", alignItems: "center", gap: 8,
         marginTop: 8, padding: "8px 12px", borderRadius: 10,
@@ -450,7 +514,7 @@ const css = {
         fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
         textAlign: "left", transition: "all 0.18s ease",
     },
-    forgotLink: { fontSize: 13, color: "#3b82f6", textDecoration: "none", fontWeight: 500 },
+
     submitBtn: {
         width: "100%", padding: "11px",
         background: "linear-gradient(135deg, #1e293b, #0f172a)",
@@ -459,27 +523,16 @@ const css = {
         fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
         marginTop: 4, letterSpacing: "0.01em",
         boxShadow: "0 2px 12px rgba(15,23,42,0.3)",
-        transition: "opacity 0.2s, transform 0.1s",
+        transition: "opacity 0.2s",
     },
     submitDisabled: { opacity: 0.65, cursor: "not-allowed" },
-    divider: { display: "flex", alignItems: "center", gap: 10, margin: "1.25rem 0" },
-    divLine: { flex: 1, height: 1, background: "#e2e8f0" },
-    divText: { fontSize: 12, color: "#94a3b8", fontWeight: 500 },
-    googleBtn: {
-        width: "100%", padding: "10px",
-        background: "#fff", color: "#374151",
-        border: "1.5px solid #e2e8f0", borderRadius: 10,
-        fontSize: 14, fontWeight: 500, cursor: "pointer",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        gap: 10, fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
-        transition: "border-color 0.2s, box-shadow 0.2s",
-    },
+
     serverError: {
         background: "#fef2f2", border: "1.5px solid #fecaca",
         borderRadius: 10, padding: "10px 14px",
-        fontSize: 13, color: "#dc2626", marginBottom: "1.1rem",
+        fontSize: 13, color: "#dc2626", marginBottom: "1rem",
         display: "flex", alignItems: "center", gap: 8,
     },
-    registerRow: { textAlign: "center", marginTop: "1.25rem", fontSize: 13, color: "#64748b" },
-    registerLink: { color: "#3b82f6", textDecoration: "none", fontWeight: 600 },
+    loginRow: { textAlign: "center", marginTop: "1.25rem", fontSize: 13, color: "#64748b" },
+    loginLink: { color: "#3b82f6", textDecoration: "none", fontWeight: 600 },
 };

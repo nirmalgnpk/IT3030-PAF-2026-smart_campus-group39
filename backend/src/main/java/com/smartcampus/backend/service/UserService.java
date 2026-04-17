@@ -1,12 +1,11 @@
 package com.smartcampus.backend.service;
 
-import java.util.List;
-
+import com.smartcampus.backend.model.User;
+import com.smartcampus.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.smartcampus.backend.model.User;
-import com.smartcampus.backend.repository.UserRepository;
+import java.util.List;
 
 @Service
 public class UserService {

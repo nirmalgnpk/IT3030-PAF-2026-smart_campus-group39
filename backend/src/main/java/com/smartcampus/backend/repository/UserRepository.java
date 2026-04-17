@@ -1,8 +1,16 @@
 package com.smartcampus.backend.repository;
 
-import org.springframework.data.mongodb.repository.MongoRepository;
 import com.smartcampus.backend.model.User;
+import org.springframework.data.mongodb.repository.MongoRepository;
+
+import java.util.Optional;
 
 public interface UserRepository extends MongoRepository<User, String> {
-    User findByEmail(String email);
+    Optional<User> findByEmail(String email);
+    Optional<User> findByUserName(String userName);
+    Optional<User> findByProviderAndProviderId(String provider, String providerId);
+    boolean existsByEmail(String email);
+    boolean existsByUserName(String userName);
+
 }
+
