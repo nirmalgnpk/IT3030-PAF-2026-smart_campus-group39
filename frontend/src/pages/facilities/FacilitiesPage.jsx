@@ -23,6 +23,7 @@ const FacilitiesPage = ({ isAdmin = false }) => {
             Browse, filter, and book campus resources
           </p>
 
+
           {/* Stats */}
           <div style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
             {stats.map((item) => (
