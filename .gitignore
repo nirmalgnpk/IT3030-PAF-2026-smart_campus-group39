@@ -1,0 +1,13 @@
+# Environment files
+.env
+
+# Spring Boot config (if contains secrets)
+application.properties
+application.yml
+
+# Build files
+target/
+node_modules/
+
+# OS files
+.DS_Store
