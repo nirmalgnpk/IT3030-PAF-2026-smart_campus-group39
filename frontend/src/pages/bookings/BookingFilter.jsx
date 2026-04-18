@@ -4,14 +4,14 @@ const BookingFilter = ({ onFilter, isAdmin }) => {
     const [status, setStatus] = useState('');
     const [date, setDate] = useState('');
     const [userId, setUserId] = useState('');
-    const [resourceId, setResourceId] = useState('');
+    const [resourceName, setResourceName] = useState('');
 
     const handleApply = () => {
         onFilter({
             status: status || undefined,
             date: date || undefined,
             userId: userId || undefined,
-            resourceId: resourceId || undefined,
+            resourceName: resourceName || undefined,
         });
     };
 
@@ -19,99 +19,140 @@ const BookingFilter = ({ onFilter, isAdmin }) => {
         setStatus('');
         setDate('');
         setUserId('');
-        setResourceId('');
-        onFilter({
-            status: undefined,
-            date: undefined,
-            userId: undefined,
-            resourceId: undefined,
-        });
+        setResourceName('');
+        onFilter({});
     };
 
     return (
-        <div className="bg-white border-b border-gray-200 shadow-sm p-4 rounded-lg">
-            <div className="flex flex-wrap gap-4 items-end">
-                {/* Status Dropdown */}
-                <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">
-                        Status
-                    </label>
+        <div style={styles.card}>
+            <p style={styles.title}>Filter Bookings</p>
+
+            <div style={styles.grid}>
+                <div style={styles.field}>
+                    <label style={styles.label}>Status</label>
                     <select
                         value={status}
                         onChange={(e) => setStatus(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700"
+                        style={styles.input}
                     >
-                        <option value="">All</option>
+                        <option value="">All Statuses</option>
                         <option value="PENDING">Pending</option>
-                        <option value="APPROVED">Approved</option>
-                        <option value="REJECTED">Rejected</option>
+                        <option value="CONFIRMED">Confirmed</option>
                         <option value="CANCELLED">Cancelled</option>
                     </select>
                 </div>
 
-                {/* Date Input */}
-                <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">
-                        Date
-                    </label>
+                <div style={styles.field}>
+                    <label style={styles.label}>Date</label>
                     <input
                         type="date"
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700"
+                        style={styles.input}
                     />
                 </div>
 
-                {/* User ID / Name Input (Admin only) */}
                 {isAdmin && (
-                    <div className="flex flex-col">
-                        <label className="text-sm font-semibold text-gray-700 mb-1">
-                            User ID
-                        </label>
+                    <div style={styles.field}>
+                        <label style={styles.label}>User ID / Name</label>
                         <input
                             type="text"
-                            placeholder="User ID or name"
+                            placeholder="Search user..."
                             value={userId}
                             onChange={(e) => setUserId(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700"
+                            style={styles.input}
                         />
                     </div>
                 )}
 
-                {/* Resource Name Input (Admin only) */}
-                {isAdmin && (
-                    <div className="flex flex-col">
-                        <label className="text-sm font-semibold text-gray-700 mb-1">
-                            Resource Name
-                        </label>
-                        <input
-                            type="text"
-                            placeholder="Resource name"
-                            value={resourceId}
-                            onChange={(e) => setResourceId(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700"
-                        />
-                    </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                    <button
-                        onClick={handleApply}
-                        className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors duration-200"
-                    >
-                        Apply
-                    </button>
-                    <button
-                        onClick={handleClear}
-                        className="px-6 py-2 bg-gray-400 hover:bg-gray-500 text-white font-semibold rounded-lg transition-colors duration-200"
-                    >
-                        Clear
-                    </button>
+                <div style={styles.field}>
+                    <label style={styles.label}>Resource Name</label>
+                    <input
+                        type="text"
+                        placeholder="Search resource..."
+                        value={resourceName}
+                        onChange={(e) => setResourceName(e.target.value)}
+                        style={styles.input}
+                    />
                 </div>
+            </div>
+
+            <div style={styles.actions}>
+                <button onClick={handleApply} style={styles.btnApply}>
+                    Apply Filters
+                </button>
+                <button onClick={handleClear} style={styles.btnClear}>
+                    Clear
+                </button>
             </div>
         </div>
     );
+};
+
+const styles = {
+    card: {
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '20px 24px',
+        border: '0.5px solid #e5e7eb',
+    },
+    title: {
+        fontSize: '12px',
+        fontWeight: '600',
+        color: '#0B1F3A',
+        marginBottom: '16px',
+        textTransform: 'uppercase',
+        letterSpacing: '0.4px',
+    },
+    grid: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+        gap: '12px',
+    },
+    field: {
+        display: 'flex',
+        flexDirection: 'column',
+    },
+    label: {
+        fontSize: '12px',
+        color: '#888',
+        fontWeight: '500',
+        marginBottom: '5px',
+    },
+    input: {
+        padding: '9px 12px',
+        border: '1px solid #ddd',
+        borderRadius: '8px',
+        fontSize: '13px',
+        color: '#0B1F3A',
+        backgroundColor: 'white',
+        outline: 'none',
+        width: '100%',
+    },
+    actions: {
+        display: 'flex',
+        gap: '10px',
+        marginTop: '16px',
+    },
+    btnApply: {
+        padding: '9px 20px',
+        backgroundColor: '#0B1F3A',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '13px',
+        fontWeight: '600',
+        cursor: 'pointer',
+    },
+    btnClear: {
+        padding: '9px 16px',
+        backgroundColor: '#f0f0f0',
+        color: '#555',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '13px',
+        cursor: 'pointer',
+    },
 };
 
 export default BookingFilter;
