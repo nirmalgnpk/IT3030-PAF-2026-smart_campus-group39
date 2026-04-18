@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Calendar } from "lucide-react";
 
 function Navbar() {
   return (
@@ -9,7 +10,12 @@ function Navbar() {
       <ul style={styles.navLinks}>
         <li><Link to="/" style={styles.link}>Home</Link></li>
         <li><Link to="/facilities" style={styles.link}>Resources</Link></li>
-        <li><Link to="/bookings" style={styles.link}>Bookings</Link></li>
+        <li>
+          <Link to="/bookings" style={styles.navLinkWithIcon}>
+            <Calendar size={18} style={styles.icon} />
+            Bookings
+          </Link>
+        </li>
         <li><Link to="/tickets" style={styles.link}>Tickets</Link></li>
         <li><Link to="/notifications" style={styles.link}>Notifications</Link></li>
         <li><Link to="/login" style={styles.link}>Login</Link></li>
@@ -38,6 +44,17 @@ const styles = {
     color: "#fff",
     textDecoration: "none",
     fontWeight: "500",
+  },
+  navLinkWithIcon: {
+    color: "#fff",
+    textDecoration: "none",
+    fontWeight: "500",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+  },
+  icon: {
+    marginRight: "2px",
   },
 };
 

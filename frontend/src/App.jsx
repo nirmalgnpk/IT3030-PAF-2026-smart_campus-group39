@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import FacilitiesPage from './pages/facilities/FacilitiesPage';
 import ResourceDetail from './pages/facilities/ResourceDetail';
+import BookingsPage from './pages/BookingsPage';
+import BookingDetail from './pages/bookings/BookingDetail';
 import Home from "./pages/Home/Home";
 
 /**
@@ -18,6 +20,10 @@ function App() {
           {/* Facilities Module Routes */}
           <Route path="/facilities" element={<FacilitiesPage isAdmin={isAdmin} />} />
           <Route path="/facilities/:id" element={<ResourceDetail isAdmin={isAdmin} />} />
+
+          {/* Bookings Module Routes */}
+          <Route path="/bookings" element={<BookingsPage />} />
+          <Route path="/bookings/:id" element={<BookingDetail />} />
 
           {/* Home Route */}
           <Route path="/" element={<Home />} />
