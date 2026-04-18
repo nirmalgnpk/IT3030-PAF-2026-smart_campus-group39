@@ -37,6 +37,7 @@ public class OtpService {
 
         record.setUsed(true);
         return true;
+
     }
 
     /** Removes the OTP entry after successful registration or password reset. */
