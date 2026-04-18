@@ -9,8 +9,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -22,6 +25,44 @@ public class UserController {
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> getUserStats() {
+        List<User> users = userService.getAllUsers();
+
+        long total       = users.size();
+        long students    = users.stream().filter(u -> "STUDENT".equals(u.getRole()) || "USER".equals(u.getRole())).count();
+        long technicians = users.stream().filter(u -> "TECHNICIAN".equals(u.getRole())).count();
+        long managers    = users.stream().filter(u -> "MANAGER".equals(u.getRole())).count();
+        long admins      = users.stream().filter(u -> "ADMIN".equals(u.getRole())).count();
+        long active      = users.stream().filter(User::isEnabled).count();
+        long disabled    = total - active;
+        long localUsers  = users.stream().filter(u -> "LOCAL".equals(u.getProvider()) || u.getProvider() == null).count();
+        long googleUsers = users.stream().filter(u -> "GOOGLE".equals(u.getProvider())).count();
+
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MMM yyyy");
+        Map<String, Long> byMonth = users.stream()
+                .filter(u -> u.getCreatedAt() != null)
+                .collect(Collectors.groupingBy(
+                        u -> u.getCreatedAt().format(fmt),
+                        LinkedHashMap::new,
+                        Collectors.counting()
+                ));
+
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("total",                 total);
+        stats.put("students",              students);
+        stats.put("technicians",           technicians);
+        stats.put("managers",              managers);
+        stats.put("admins",                admins);
+        stats.put("active",                active);
+        stats.put("disabled",              disabled);
+        stats.put("localUsers",            localUsers);
+        stats.put("googleUsers",           googleUsers);
+        stats.put("registrationsByMonth",  byMonth);
+
+        return ResponseEntity.ok(stats);
     }
 
     @GetMapping("/{id}")

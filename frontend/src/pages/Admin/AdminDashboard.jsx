@@ -1,14 +1,18 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
-import axios from "axios";
+import api from "../../api";
 import {
     FiUsers, FiBarChart2, FiHome, FiLogOut,
     FiBell, FiSearch, FiEdit2, FiLock, FiUnlock,
     FiTrash2, FiX, FiCheck, FiSend, FiAlertTriangle,
     FiGift, FiCalendar, FiAlertCircle, FiBookOpen,
-    FiZap, FiInfo, FiCheckCircle
+    FiZap, FiInfo, FiCheckCircle, FiUserCheck, FiUserX,
 } from "react-icons/fi";
+import {
+    BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
+    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from "recharts";
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 const ROLE_COLORS = {
@@ -23,25 +27,25 @@ function RoleBadge({ role }) {
     const cfg = ROLE_COLORS[role] || ROLE_COLORS.USER;
     return (
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600, background: cfg.bg, color: cfg.color }}>
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot, display: "inline-block" }} />
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot, display: "inline-block" }} />
             {role}
-    </span>
+        </span>
     );
 }
 
 function StatusBadge({ enabled }) {
     return (
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600, background: enabled ? "#f0fdf4" : "#fef2f2", color: enabled ? "#15803d" : "#dc2626" }}>
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: enabled ? "#22c55e" : "#ef4444", display: "inline-block" }} />
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: enabled ? "#22c55e" : "#ef4444", display: "inline-block" }} />
             {enabled ? "Active" : "Disabled"}
-    </span>
+        </span>
     );
 }
 
 function Avatar({ user, size = 36 }) {
     const ini = (user.name || user.userName || "?").trim().split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
-    const colors = ["#3b82f6","#8b5cf6","#ec4899","#f59e0b","#10b981","#ef4444"];
-    const color  = colors[(user.email || "").charCodeAt(0) % colors.length];
+    const colors = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#ef4444"];
+    const color = colors[(user.email || "").charCodeAt(0) % colors.length];
     return user.profilePhotoUrl ? (
         <img src={user.profilePhotoUrl} alt={user.name} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover" }} />
     ) : (
@@ -52,12 +56,12 @@ function Avatar({ user, size = 36 }) {
 function NotifIcon({ type }) {
     const s = { width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
     switch (type) {
-        case "WELCOME":  return <div style={{ ...s, background: "#eff6ff" }}><FiGift        size={13} color="#3b82f6" /></div>;
-        case "BOOKING":  return <div style={{ ...s, background: "#f0fdf4" }}><FiCalendar    size={13} color="#16a34a" /></div>;
+        case "WELCOME":  return <div style={{ ...s, background: "#eff6ff" }}><FiGift size={13} color="#3b82f6" /></div>;
+        case "BOOKING":  return <div style={{ ...s, background: "#f0fdf4" }}><FiCalendar size={13} color="#16a34a" /></div>;
         case "TICKET":   return <div style={{ ...s, background: "#fdf4ff" }}><FiAlertCircle size={13} color="#9333ea" /></div>;
-        case "RESOURCE": return <div style={{ ...s, background: "#fff7ed" }}><FiBookOpen    size={13} color="#ea580c" /></div>;
-        case "SYSTEM":   return <div style={{ ...s, background: "#fef3c7" }}><FiZap         size={13} color="#d97706" /></div>;
-        default:         return <div style={{ ...s, background: "#f1f5f9" }}><FiInfo        size={13} color="#64748b" /></div>;
+        case "RESOURCE": return <div style={{ ...s, background: "#fff7ed" }}><FiBookOpen size={13} color="#ea580c" /></div>;
+        case "SYSTEM":   return <div style={{ ...s, background: "#fef3c7" }}><FiZap size={13} color="#d97706" /></div>;
+        default:         return <div style={{ ...s, background: "#f1f5f9" }}><FiInfo size={13} color="#64748b" /></div>;
     }
 }
 
@@ -71,13 +75,17 @@ function timeAgo(dateStr) {
     return `${Math.floor(h / 24)}d ago`;
 }
 
+const PIE_COLORS = ["#3b82f6", "#22c55e", "#a855f7", "#f59e0b", "#ef4444"];
+
 /* ── Main component ───────────────────────────────────────────────────────── */
 export default function AdminDashboard() {
     const { currentUser, logout } = useAuth();
     const navigate = useNavigate();
 
     const [users,        setUsers]        = useState([]);
+    const [stats,        setStats]        = useState(null);
     const [loading,      setLoading]      = useState(true);
+    const [statsLoading, setStatsLoading] = useState(true);
     const [search,       setSearch]       = useState("");
     const [roleFilter,   setRoleFilter]   = useState("ALL");
     const [editUser,     setEditUser]     = useState(null);
@@ -87,7 +95,6 @@ export default function AdminDashboard() {
     const [toast,        setToast]        = useState(null);
     const [activeTab,    setActiveTab]    = useState("users");
 
-    // Notification bell (admin's own)
     const adminId = currentUser?.id || currentUser?.userId;
     const [notifOpen,  setNotifOpen]  = useState(false);
     const [notifs,     setNotifs]     = useState([]);
@@ -95,23 +102,15 @@ export default function AdminDashboard() {
     const [notifLoad,  setNotifLoad]  = useState(false);
     const notifRef = useRef(null);
 
-    // Send notification panel
     const [sendPanel,     setSendPanel]     = useState(false);
     const [sendForm,      setSendForm]      = useState({ userId: "", type: "BOOKING", title: "", message: "" });
     const [sendLoading,   setSendLoading]   = useState(false);
     const [broadcastMode, setBroadcastMode] = useState(false);
 
-    /* ── Auth header ──────────────────────────────────────────────────────────── */
-    // Axios global header is set by AuthContext; this is just a fallback
-    function ah() {
-        const t = localStorage.getItem("sc_token");
-        return t ? { Authorization: `Bearer ${t}` } : {};
-    }
-
-    /* ── Init ─────────────────────────────────────────────────────────────────── */
     useEffect(() => {
         if (currentUser && currentUser.role !== "ADMIN") { navigate("/"); return; }
         fetchUsers();
+        fetchStats();
         fetchAdminUnread();
         const iv = setInterval(fetchAdminUnread, 30000);
         return () => clearInterval(iv);
@@ -128,7 +127,7 @@ export default function AdminDashboard() {
     async function fetchUsers() {
         setLoading(true);
         try {
-            const { data } = await axios.get("/api/users", { headers: ah() });
+            const { data } = await api.get("/api/users");
             setUsers(data);
         } catch (err) {
             if (err.response?.status === 401) { logout(); navigate("/login"); }
@@ -136,10 +135,20 @@ export default function AdminDashboard() {
         } finally { setLoading(false); }
     }
 
+    async function fetchStats() {
+        setStatsLoading(true);
+        try {
+            const { data } = await api.get("/api/users/stats");
+            setStats(data);
+        } catch {
+            showToast("Failed to load stats", "error");
+        } finally { setStatsLoading(false); }
+    }
+
     async function fetchAdminUnread() {
         if (!adminId) return;
         try {
-            const { data } = await axios.get(`/api/notifications/user/${adminId}/unread-count`, { headers: ah() });
+            const { data } = await api.get(`/api/notifications/user/${adminId}/unread-count`);
             setUnread(data.count || 0);
         } catch { /* silent */ }
     }
@@ -149,7 +158,7 @@ export default function AdminDashboard() {
         if (notifOpen || !adminId) return;
         setNotifLoad(true);
         try {
-            const { data } = await axios.get(`/api/notifications/user/${adminId}`, { headers: ah() });
+            const { data } = await api.get(`/api/notifications/user/${adminId}`);
             setNotifs(data);
             setUnread(data.filter(n => !n.read).length);
         } catch { /* silent */ } finally { setNotifLoad(false); }
@@ -157,7 +166,7 @@ export default function AdminDashboard() {
 
     async function markNotifRead(id) {
         try {
-            await axios.put(`/api/notifications/${id}/read`, {}, { headers: ah() });
+            await api.put(`/api/notifications/${id}/read`, {});
             setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
             setUnread(p => Math.max(0, p - 1));
         } catch { /* silent */ }
@@ -166,13 +175,12 @@ export default function AdminDashboard() {
     async function markAllNotifRead() {
         if (!adminId) return;
         try {
-            await axios.put(`/api/notifications/user/${adminId}/read-all`, {}, { headers: ah() });
+            await api.put(`/api/notifications/user/${adminId}/read-all`, {});
             setNotifs(prev => prev.map(n => ({ ...n, read: true })));
             setUnread(0);
         } catch { /* silent */ }
     }
 
-    /* ── User CRUD ────────────────────────────────────────────────────────────── */
     function showToast(msg, type = "success") {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 3000);
@@ -186,9 +194,10 @@ export default function AdminDashboard() {
     async function saveEdit() {
         setSaving(true);
         try {
-            await axios.put(`/api/users/${editUser.id}`, editForm, { headers: ah() });
+            await api.put(`/api/users/${editUser.id}`, editForm);
             setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, ...editForm } : u));
             setEditUser(null);
+            fetchStats();
             showToast("User updated");
         } catch { showToast("Failed to update user", "error"); }
         finally { setSaving(false); }
@@ -196,11 +205,11 @@ export default function AdminDashboard() {
 
     async function toggleStatus(user) {
         try {
-            await axios.put(`/api/users/${user.id}`, { enabled: !user.enabled }, { headers: ah() });
+            await api.put(`/api/users/${user.id}`, { enabled: !user.enabled });
             setUsers(prev => prev.map(u => u.id === user.id ? { ...u, enabled: !u.enabled } : u));
+            fetchStats();
             showToast(`User ${!user.enabled ? "enabled" : "disabled"}`);
-            // Notify the user
-            await axios.post("/api/notifications", {
+            await api.post("/api/notifications", {
                 userId: user.id,
                 type: "SYSTEM",
                 title: !user.enabled ? "Account Enabled" : "Account Disabled",
@@ -208,43 +217,37 @@ export default function AdminDashboard() {
                     ? "Your account has been re-enabled by an administrator."
                     : "Your account has been disabled by an administrator. Contact support.",
                 relatedId: "",
-            }, { headers: ah() });
+            });
         } catch { showToast("Failed to update status", "error"); }
     }
 
     async function confirmDelete() {
         try {
-            await axios.delete(`/api/users/${deleteTarget.id}`, { headers: ah() });
+            await api.delete(`/api/users/${deleteTarget.id}`);
             setUsers(prev => prev.filter(u => u.id !== deleteTarget.id));
             setDeleteTarget(null);
+            fetchStats();
             showToast("User deleted");
         } catch { showToast("Failed to delete user", "error"); }
     }
 
-    /* ── Send notification ────────────────────────────────────────────────────── */
     async function handleSendNotification() {
         if (!sendForm.title.trim() || !sendForm.message.trim())
             return showToast("Title and message are required", "error");
-
         if (!broadcastMode && !sendForm.userId.trim())
             return showToast("User ID is required", "error");
-
         setSendLoading(true);
         try {
             if (broadcastMode) {
-                await axios.post("/api/notifications/broadcast", {
-                    title:   sendForm.title,
-                    message: sendForm.message,
-                }, { headers: ah() });
+                await api.post("/api/notifications/broadcast", {
+                    title: sendForm.title, message: sendForm.message,
+                });
                 showToast("Broadcast sent to all users");
             } else {
-                await axios.post("/api/notifications", {
-                    userId:  sendForm.userId.trim(),
-                    type:    sendForm.type,
-                    title:   sendForm.title,
-                    message: sendForm.message,
-                    relatedId: "",
-                }, { headers: ah() });
+                await api.post("/api/notifications", {
+                    userId: sendForm.userId.trim(), type: sendForm.type,
+                    title: sendForm.title, message: sendForm.message, relatedId: "",
+                });
                 showToast("Notification sent");
             }
             setSendForm({ userId: "", type: "BOOKING", title: "", message: "" });
@@ -253,7 +256,7 @@ export default function AdminDashboard() {
         finally { setSendLoading(false); }
     }
 
-    /* ── Derived ──────────────────────────────────────────────────────────────── */
+    /* ── Derived ── */
     const filtered = users.filter(u => {
         const q = search.toLowerCase();
         const matchSearch = !q || u.name?.toLowerCase().includes(q) ||
@@ -262,18 +265,40 @@ export default function AdminDashboard() {
         return matchSearch && matchRole;
     });
 
-    const stats = {
+    const localStats = {
         total:       users.length,
         students:    users.filter(u => u.role === "STUDENT" || u.role === "USER").length,
         technicians: users.filter(u => u.role === "TECHNICIAN").length,
+        managers:    users.filter(u => u.role === "MANAGER").length,
         admins:      users.filter(u => u.role === "ADMIN").length,
         active:      users.filter(u => u.enabled).length,
     };
 
-    /* ── Render ───────────────────────────────────────────────────────────────── */
+    const roleChartData = [
+        { name: "Students",   value: stats?.students    ?? localStats.students    },
+        { name: "Technicians",value: stats?.technicians ?? localStats.technicians },
+        { name: "Managers",   value: stats?.managers    ?? localStats.managers    },
+        { name: "Admins",     value: stats?.admins      ?? localStats.admins      },
+    ].filter(d => d.value > 0);
+
+    const statusChartData = [
+        { name: "Active",   value: stats?.active   ?? localStats.active },
+        { name: "Disabled", value: stats?.disabled ?? (localStats.total - localStats.active) },
+    ];
+
+    const providerChartData = [
+        { name: "Local",  value: stats?.localUsers  ?? 0 },
+        { name: "Google", value: stats?.googleUsers ?? 0 },
+    ].filter(d => d.value > 0);
+
+    const monthlyData = stats?.registrationsByMonth
+        ? Object.entries(stats.registrationsByMonth).map(([month, count]) => ({ month, count }))
+        : [];
+
+    /* ── Render ── */
     return (
         <div style={S.page}>
-            {/* ── Sidebar ── */}
+            {/* Sidebar */}
             <aside style={S.sidebar}>
                 <div style={S.sidebarTop}>
                     <div style={S.sideLogoRow}>
@@ -283,20 +308,17 @@ export default function AdminDashboard() {
                             <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 1 }}>Admin Panel</div>
                         </div>
                     </div>
-
                     <nav style={{ marginTop: "2rem" }}>
                         {[
-                            { id: "users", icon: <FiUsers size={15} />,    label: "Users"    },
-                            { id: "stats", icon: <FiBarChart2 size={15} />, label: "Overview" },
+                            { id: "users",    icon: <FiUsers size={15} />,     label: "Users"    },
+                            { id: "overview", icon: <FiBarChart2 size={15} />, label: "Overview" },
                         ].map(item => (
                             <button key={item.id} onClick={() => setActiveTab(item.id)}
                                     style={{ ...S.navItem, ...(activeTab === item.id ? S.navItemActive : {}) }}>
                                 {item.icon}<span>{item.label}</span>
                             </button>
                         ))}
-
                         <div style={{ borderTop: "1px solid #1e293b", margin: "1rem 0" }} />
-
                         <Link to="/" style={{ ...S.navItem, textDecoration: "none", display: "flex", gap: 10 }}>
                             <FiHome size={15} /><span>Main App</span>
                         </Link>
@@ -305,7 +327,6 @@ export default function AdminDashboard() {
                         </button>
                     </nav>
                 </div>
-
                 <div style={S.sideAdminCard}>
                     <Avatar user={currentUser || {}} size={32} />
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -317,32 +338,27 @@ export default function AdminDashboard() {
                 </div>
             </aside>
 
-            {/* ── Main ── */}
+            {/* Main */}
             <main style={S.main}>
                 {/* Header */}
                 <header style={S.header}>
                     <div>
-                        <h1 style={S.pageTitle}>{activeTab === "users" ? "User Management" : "Overview"}</h1>
+                        <h1 style={S.pageTitle}>{activeTab === "users" ? "User Management" : "Platform Overview"}</h1>
                         <p style={S.pageSubtitle}>
-                            {activeTab === "users" ? `${filtered.length} of ${users.length} users` : "Platform statistics"}
+                            {activeTab === "users"
+                                ? `${filtered.length} of ${users.length} users`
+                                : `${localStats.total} total users · ${localStats.active} active`}
                         </p>
                     </div>
-
-                    {/* Header actions */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-
-                        {/* Send notification button */}
                         <button onClick={() => setSendPanel(true)} style={S.actionHeaderBtn}>
                             <FiSend size={14} /> Send Notification
                         </button>
-
-                        {/* Admin notification bell */}
                         <div style={{ position: "relative" }} ref={notifRef}>
                             <button style={S.bellBtn} onClick={openNotifPanel} title="My Notifications">
                                 <FiBell size={16} color="#64748b" />
                                 {unread > 0 && <span style={S.badge}>{unread > 99 ? "99+" : unread}</span>}
                             </button>
-
                             {notifOpen && (
                                 <div style={{ ...S.notifPanel, right: 0 }}>
                                     <div style={S.notifHeader}>
@@ -383,14 +399,16 @@ export default function AdminDashboard() {
                     </div>
                 </header>
 
-                {/* Stats */}
+                {/* Stats Cards — always visible */}
                 <div style={S.statsGrid}>
                     {[
-                        { label: "Total Users",  value: stats.total,       icon: <FiUsers size={16} />,    color: "#3b82f6", bg: "#eff6ff" },
-                        { label: "Students",      value: stats.students,    icon: "🎓",                     color: "#1d4ed8", bg: "#dbeafe" },
-                        { label: "Technicians",   value: stats.technicians, icon: "🔧",                     color: "#15803d", bg: "#dcfce7" },
-                        { label: "Admins",        value: stats.admins,      icon: <FiZap size={16} />,      color: "#92400e", bg: "#fef3c7" },
-                        { label: "Active",        value: stats.active,      icon: <FiCheckCircle size={16}/>, color: "#059669", bg: "#d1fae5" },
+                        { label: "Total Users",  value: localStats.total,                       icon: <FiUsers size={16} />,      color: "#3b82f6", bg: "#eff6ff" },
+                        { label: "Students",     value: localStats.students,                    icon: "🎓",                        color: "#1d4ed8", bg: "#dbeafe" },
+                        { label: "Technicians",  value: localStats.technicians,                 icon: "🔧",                        color: "#15803d", bg: "#dcfce7" },
+                        { label: "Managers",     value: localStats.managers,                    icon: "📋",                        color: "#7e22ce", bg: "#faf5ff" },
+                        { label: "Admins",       value: localStats.admins,                      icon: <FiZap size={16} />,         color: "#92400e", bg: "#fef3c7" },
+                        { label: "Active",       value: localStats.active,                      icon: <FiUserCheck size={16} />,  color: "#059669", bg: "#d1fae5" },
+                        { label: "Disabled",     value: localStats.total - localStats.active,   icon: <FiUserX size={16} />,      color: "#dc2626", bg: "#fee2e2" },
                     ].map(s => (
                         <div key={s.label} style={S.statCard}>
                             <div style={{ ...S.statIcon, background: s.bg, color: s.color }}>{s.icon}</div>
@@ -400,9 +418,9 @@ export default function AdminDashboard() {
                     ))}
                 </div>
 
+                {/* ── USERS TAB ── */}
                 {activeTab === "users" && (
                     <>
-                        {/* Filters */}
                         <div style={S.filterBar}>
                             <div style={S.searchWrap}>
                                 <FiSearch size={14} color="#94a3b8" style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)" }} />
@@ -410,7 +428,7 @@ export default function AdminDashboard() {
                                        value={search} onChange={e => setSearch(e.target.value)} />
                             </div>
                             <div style={S.roleFilters}>
-                                {["ALL","STUDENT","USER","TECHNICIAN","MANAGER","ADMIN"].map(r => (
+                                {["ALL", "STUDENT", "USER", "TECHNICIAN", "MANAGER", "ADMIN"].map(r => (
                                     <button key={r} onClick={() => setRoleFilter(r)}
                                             style={{ ...S.filterChip, ...(roleFilter === r ? S.filterChipActive : {}) }}>
                                         {r === "ALL" ? "All Roles" : r}
@@ -419,7 +437,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {/* Table */}
                         <div style={S.tableWrap}>
                             {loading ? (
                                 <div style={S.emptyState}>Loading users…</div>
@@ -428,7 +445,7 @@ export default function AdminDashboard() {
                             ) : (
                                 <table style={S.table}>
                                     <thead>
-                                    <tr>{["User","Email","Role","Provider","Status","Joined","Actions"].map(h => (
+                                    <tr>{["User", "Email", "Role", "Provider", "Status", "Joined", "Actions"].map(h => (
                                         <th key={h} style={S.th}>{h}</th>
                                     ))}</tr>
                                     </thead>
@@ -449,9 +466,9 @@ export default function AdminDashboard() {
                                             <td style={S.td}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>{user.provider || "LOCAL"}</span></td>
                                             <td style={S.td}><StatusBadge enabled={user.enabled} /></td>
                                             <td style={S.td}>
-                          <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
-                          </span>
+                                                <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                                                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                                </span>
                                             </td>
                                             <td style={S.td}>
                                                 <div style={{ display: "flex", gap: 5 }}>
@@ -463,7 +480,7 @@ export default function AdminDashboard() {
                                                             style={S.actionBtn} title="Send notification">
                                                         <FiBell size={13} color="#3b82f6" />
                                                     </button>
-                                                    {user.id !== currentUser?.id && (
+                                                    {user.id !== adminId && (
                                                         <button onClick={() => setDeleteTarget(user)} style={{ ...S.actionBtn, color: "#ef4444" }} title="Delete">
                                                             <FiTrash2 size={13} />
                                                         </button>
@@ -479,9 +496,105 @@ export default function AdminDashboard() {
                     </>
                 )}
 
-                {activeTab === "stats" && (
-                    <div style={{ padding: "2rem", color: "#64748b", fontSize: 14 }}>
-                        Platform statistics overview coming soon.
+                {/* ── OVERVIEW TAB ── */}
+                {activeTab === "overview" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                        {statsLoading ? (
+                            <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8", fontSize: 14 }}>Loading analytics…</div>
+                        ) : (
+                            <>
+                                {/* Row 1: Role breakdown + Status + Provider */}
+                                <div style={S.chartRow}>
+                                    <div style={S.chartCard}>
+                                        <h3 style={S.chartTitle}>Users by Role</h3>
+                                        <ResponsiveContainer width="100%" height={220}>
+                                            <BarChart data={roleChartData} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                                <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#64748b" }} />
+                                                <YAxis tick={{ fontSize: 12, fill: "#64748b" }} allowDecimals={false} />
+                                                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }} />
+                                                <Bar dataKey="value" name="Users" radius={[6, 6, 0, 0]}>
+                                                    {roleChartData.map((_, idx) => (
+                                                        <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    <div style={S.chartCard}>
+                                        <h3 style={S.chartTitle}>Account Status</h3>
+                                        <ResponsiveContainer width="100%" height={220}>
+                                            <PieChart>
+                                                <Pie data={statusChartData} cx="50%" cy="50%" outerRadius={80}
+                                                     dataKey="value" nameKey="name"
+                                                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                                     labelLine={false}>
+                                                    <Cell fill="#22c55e" />
+                                                    <Cell fill="#ef4444" />
+                                                </Pie>
+                                                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }} />
+                                                <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    <div style={S.chartCard}>
+                                        <h3 style={S.chartTitle}>Login Provider</h3>
+                                        <ResponsiveContainer width="100%" height={220}>
+                                            <PieChart>
+                                                <Pie data={providerChartData} cx="50%" cy="50%" innerRadius={50} outerRadius={80}
+                                                     dataKey="value" nameKey="name">
+                                                    <Cell fill="#3b82f6" />
+                                                    <Cell fill="#f59e0b" />
+                                                </Pie>
+                                                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }} />
+                                                <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+
+                                {/* Row 2: Registrations over time */}
+                                {monthlyData.length > 0 && (
+                                    <div style={{ ...S.chartCard, width: "100%" }}>
+                                        <h3 style={S.chartTitle}>Registrations Over Time</h3>
+                                        <ResponsiveContainer width="100%" height={220}>
+                                            <LineChart data={monthlyData} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                                <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#64748b" }} />
+                                                <YAxis tick={{ fontSize: 12, fill: "#64748b" }} allowDecimals={false} />
+                                                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }} />
+                                                <Line type="monotone" dataKey="count" name="New Users" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4, fill: "#3b82f6" }} />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                )}
+
+                                {/* Row 3: Recently joined */}
+                                <div style={S.chartCard}>
+                                    <h3 style={S.chartTitle}>Recently Joined Users</h3>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
+                                        {[...users]
+                                            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                                            .slice(0, 5)
+                                            .map(user => (
+                                                <div key={user.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
+                                                    <Avatar user={user} size={32} />
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{user.name || user.userName}</div>
+                                                        <div style={{ fontSize: 11, color: "#94a3b8" }}>{user.email}</div>
+                                                    </div>
+                                                    <RoleBadge role={user.role} />
+                                                    <span style={{ fontSize: 11, color: "#94a3b8", minWidth: 70, textAlign: "right" }}>
+                                                        {user.createdAt ? timeAgo(user.createdAt) : "—"}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
             </main>
@@ -491,85 +604,57 @@ export default function AdminDashboard() {
                 <div style={S.overlay} onClick={() => setSendPanel(false)}>
                     <div style={{ ...S.modal, maxWidth: 480 }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-                            <h2 style={S.modalTitle}>
-                                <FiSend size={18} style={{ marginRight: 8, color: "#3b82f6" }} />
-                                Send Notification
-                            </h2>
-                            <button onClick={() => setSendPanel(false)} style={{ background: "none", border: "none", cursor: "pointer" }}>
-                                <FiX size={18} color="#94a3b8" />
-                            </button>
+                            <h2 style={S.modalTitle}><FiSend size={18} style={{ marginRight: 8, color: "#3b82f6" }} />Send Notification</h2>
+                            <button onClick={() => setSendPanel(false)} style={{ background: "none", border: "none", cursor: "pointer" }}><FiX size={18} color="#94a3b8" /></button>
                         </div>
-
-                        {/* Broadcast toggle */}
                         <div style={{ display: "flex", gap: 8, marginBottom: "1rem" }}>
-                            <button onClick={() => setBroadcastMode(false)}
-                                    style={{ ...S.toggleBtn, ...((!broadcastMode) ? S.toggleBtnActive : {}) }}>
-                                Single User
-                            </button>
-                            <button onClick={() => setBroadcastMode(true)}
-                                    style={{ ...S.toggleBtn, ...(broadcastMode ? S.toggleBtnActive : {}) }}>
-                                Broadcast to All
-                            </button>
+                            <button onClick={() => setBroadcastMode(false)} style={{ ...S.toggleBtn, ...(!broadcastMode ? S.toggleBtnActive : {}) }}>Single User</button>
+                            <button onClick={() => setBroadcastMode(true)}  style={{ ...S.toggleBtn, ...(broadcastMode  ? S.toggleBtnActive : {}) }}>Broadcast to All</button>
                         </div>
-
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
                             {!broadcastMode && (
                                 <div>
                                     <label style={S.modalLabel}>User ID</label>
                                     <input style={S.modalInput} placeholder="Paste user ID here"
-                                           value={sendForm.userId}
-                                           onChange={e => setSendForm(f => ({ ...f, userId: e.target.value }))} />
-                                    <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
-                                        Tip: Click the bell icon next to a user in the table to auto-fill.
-                                    </p>
+                                           value={sendForm.userId} onChange={e => setSendForm(f => ({ ...f, userId: e.target.value }))} />
+                                    <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>Tip: Click the bell icon next to a user to auto-fill.</p>
                                 </div>
                             )}
-
                             <div>
                                 <label style={S.modalLabel}>Type</label>
-                                <select style={S.modalInput} value={sendForm.type}
-                                        onChange={e => setSendForm(f => ({ ...f, type: e.target.value }))}>
-                                    {["BOOKING","TICKET","RESOURCE","PROFILE","SYSTEM","WELCOME"].map(t => (
+                                <select style={S.modalInput} value={sendForm.type} onChange={e => setSendForm(f => ({ ...f, type: e.target.value }))}>
+                                    {["BOOKING", "TICKET", "RESOURCE", "PROFILE", "SYSTEM", "WELCOME"].map(t => (
                                         <option key={t} value={t}>{t}</option>
                                     ))}
                                 </select>
                             </div>
-
                             <div>
                                 <label style={S.modalLabel}>Title</label>
                                 <input style={S.modalInput} placeholder="Notification title"
-                                       value={sendForm.title}
-                                       onChange={e => setSendForm(f => ({ ...f, title: e.target.value }))} />
+                                       value={sendForm.title} onChange={e => setSendForm(f => ({ ...f, title: e.target.value }))} />
                             </div>
-
                             <div>
                                 <label style={S.modalLabel}>Message</label>
                                 <textarea style={{ ...S.modalInput, height: 90, resize: "vertical" }}
                                           placeholder="Notification message..."
-                                          value={sendForm.message}
-                                          onChange={e => setSendForm(f => ({ ...f, message: e.target.value }))} />
+                                          value={sendForm.message} onChange={e => setSendForm(f => ({ ...f, message: e.target.value }))} />
                             </div>
                         </div>
-
-                        {/* Quick templates */}
                         <div style={{ marginTop: "1rem" }}>
                             <p style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Quick Templates</p>
                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                                 {[
-                                    { label: "Booking Confirmed", type: "BOOKING", title: "Booking Confirmed", message: "Your booking has been confirmed by the admin." },
-                                    { label: "Booking Rejected",  type: "BOOKING", title: "Booking Rejected",  message: "Your booking has been rejected. Please contact support for details." },
-                                    { label: "Ticket Responded",  type: "TICKET",  title: "Ticket Update",     message: "An administrator has responded to your support ticket." },
-                                    { label: "New Resource",      type: "RESOURCE",title: "New Resource Added", message: "A new campus resource is now available for booking." },
+                                    { label: "Booking Confirmed", type: "BOOKING",  title: "Booking Confirmed",  message: "Your booking has been confirmed by the admin." },
+                                    { label: "Booking Rejected",  type: "BOOKING",  title: "Booking Rejected",   message: "Your booking has been rejected. Please contact support for details." },
+                                    { label: "Ticket Responded",  type: "TICKET",   title: "Ticket Update",      message: "An administrator has responded to your support ticket." },
+                                    { label: "New Resource",      type: "RESOURCE", title: "New Resource Added", message: "A new campus resource is now available for booking." },
                                 ].map(t => (
-                                    <button key={t.label}
-                                            onClick={() => setSendForm(f => ({ ...f, type: t.type, title: t.title, message: t.message }))}
-                                            style={S.templateBtn}>
+                                    <button key={t.label} onClick={() => setSendForm(f => ({ ...f, type: t.type, title: t.title, message: t.message }))} style={S.templateBtn}>
                                         {t.label}
                                     </button>
                                 ))}
                             </div>
                         </div>
-
                         <div style={{ display: "flex", gap: 10, marginTop: "1.5rem", justifyContent: "flex-end" }}>
                             <button onClick={() => setSendPanel(false)} style={S.modalCancelBtn}>Cancel</button>
                             <button onClick={handleSendNotification} disabled={sendLoading}
@@ -599,7 +684,7 @@ export default function AdminDashboard() {
                                 <label style={S.modalLabel}>Role</label>
                                 <select style={S.modalInput} value={editForm.role || "USER"}
                                         onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}>
-                                    {["USER","STUDENT","TECHNICIAN","MANAGER","ADMIN"].map(r => (
+                                    {["USER", "STUDENT", "TECHNICIAN", "MANAGER", "ADMIN"].map(r => (
                                         <option key={r} value={r}>{r}</option>
                                     ))}
                                 </select>
@@ -652,54 +737,57 @@ export default function AdminDashboard() {
     );
 }
 
-/* ── Styles ───────────────────────────────────────────────────────────────── */
+/* ── Styles ── */
 const S = {
-    page:        { display: "flex", minHeight: "100vh", background: "#f1f5f9", fontFamily: "'DM Sans','Segoe UI',sans-serif" },
-    sidebar:     { width: 220, background: "#0f172a", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "1.5rem 1rem", position: "sticky", top: 0, height: "100vh", flexShrink: 0 },
-    sidebarTop:  { flex: 1 },
-    sideLogoRow: { display: "flex", alignItems: "center", gap: 10 },
-    sideLogo:    { width: 36, height: 36, borderRadius: 9, background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff" },
-    sideLogoText:{ fontSize: 14, fontWeight: 700, color: "#f1f5f9" },
-    navItem:     { display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 8, border: "none", background: "transparent", color: "#94a3b8", fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left", fontFamily: "inherit", marginBottom: 2 },
+    page:         { display: "flex", minHeight: "100vh", background: "#f1f5f9", fontFamily: "'DM Sans','Segoe UI',sans-serif" },
+    sidebar:      { width: 220, background: "#0f172a", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "1.5rem 1rem", position: "sticky", top: 0, height: "100vh", flexShrink: 0 },
+    sidebarTop:   { flex: 1 },
+    sideLogoRow:  { display: "flex", alignItems: "center", gap: 10 },
+    sideLogo:     { width: 36, height: 36, borderRadius: 9, background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff" },
+    sideLogoText: { fontSize: 14, fontWeight: 700, color: "#f1f5f9" },
+    navItem:      { display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 8, border: "none", background: "transparent", color: "#94a3b8", fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left", fontFamily: "inherit", marginBottom: 2 },
     navItemActive:{ background: "#1e293b", color: "#f1f5f9" },
     sideAdminCard:{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#1e293b", borderRadius: 10 },
-    main:        { flex: 1, padding: "2rem", overflow: "auto" },
-    header:      { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.75rem" },
-    pageTitle:   { fontSize: 24, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.5px" },
-    pageSubtitle:{ fontSize: 14, color: "#64748b", marginTop: 3 },
+    main:         { flex: 1, padding: "2rem", overflow: "auto" },
+    header:       { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.75rem" },
+    pageTitle:    { fontSize: 24, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.5px" },
+    pageSubtitle: { fontSize: 14, color: "#64748b", marginTop: 3 },
     actionHeaderBtn: { display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "none", background: "#3b82f6", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" },
-    bellBtn:     { width: 36, height: 36, borderRadius: "50%", background: "#fff", border: "1px solid #e2e8f0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" },
-    badge:       { position: "absolute", top: -3, right: -3, background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 700, padding: "1px 4px", borderRadius: 8, border: "2px solid #f1f5f9", minWidth: 16, textAlign: "center" },
-    notifPanel:  { position: "absolute", top: 44, width: 320, background: "#fff", border: "1px solid #e8edf2", borderRadius: 14, boxShadow: "0 12px 40px rgba(0,0,0,0.12)", overflow: "hidden", zIndex: 400 },
-    notifHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid #f1f5f9" },
-    smBtn:       { display: "flex", alignItems: "center", gap: 3, padding: "3px 8px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", fontSize: 11, color: "#64748b", cursor: "pointer" },
-    statsGrid:   { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px,1fr))", gap: 12, marginBottom: "1.75rem" },
-    statCard:    { background: "#fff", borderRadius: 14, padding: "1rem 1.25rem", boxShadow: "0 1px 6px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: 4, border: "1px solid #e8edf2" },
-    statIcon:    { width: 34, height: 34, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, marginBottom: 4 },
-    statVal:     { fontSize: 26, fontWeight: 700, color: "#0f172a", letterSpacing: "-1px" },
-    statLabel:   { fontSize: 12, color: "#64748b", fontWeight: 500 },
-    filterBar:   { display: "flex", gap: 12, marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" },
-    searchWrap:  { position: "relative", flex: "1 1 240px", minWidth: 200 },
-    searchInput: { width: "100%", padding: "9px 12px 9px 34px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 14, color: "#0f172a", outline: "none", fontFamily: "inherit", background: "#fff", boxSizing: "border-box" },
-    roleFilters: { display: "flex", gap: 6, flexWrap: "wrap" },
-    filterChip:  { padding: "5px 12px", borderRadius: 20, border: "1.5px solid #e2e8f0", background: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#64748b", fontFamily: "inherit" },
-    filterChipActive: { background: "#1e293b", color: "#fff", borderColor: "#1e293b" },
-    tableWrap:   { background: "#fff", borderRadius: 14, border: "1px solid #e8edf2", overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" },
-    table:       { width: "100%", borderCollapse: "collapse" },
-    th:          { padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #f1f5f9", background: "#f8fafc" },
-    tr:          { transition: "background 0.1s" },
-    td:          { padding: "12px 16px", borderBottom: "1px solid #f1f5f9" },
-    actionBtn:   { padding: "5px 7px", borderRadius: 7, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 14, lineHeight: 1, display: "inline-flex", alignItems: "center" },
-    emptyState:  { padding: "3rem", textAlign: "center", color: "#94a3b8", fontSize: 14 },
-    overlay:     { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 500, padding: "1rem" },
-    modal:       { background: "#fff", borderRadius: 16, padding: "2rem", width: "100%", maxWidth: 440, boxShadow: "0 20px 60px rgba(0,0,0,0.15)" },
-    modalTitle:  { fontSize: 18, fontWeight: 700, color: "#0f172a", display: "flex", alignItems: "center" },
-    modalLabel:  { display: "block", fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" },
-    modalInput:  { width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #e2e8f0", fontSize: 14, color: "#0f172a", outline: "none", fontFamily: "inherit", boxSizing: "border-box" },
-    modalCancelBtn: { padding: "8px 18px", borderRadius: 8, border: "1.5px solid #e2e8f0", background: "#fff", color: "#374151", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" },
-    modalSaveBtn:   { padding: "8px 18px", borderRadius: 8, border: "none", background: "#1e293b", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" },
-    toggleBtn:      { padding: "6px 14px", borderRadius: 8, border: "1.5px solid #e2e8f0", background: "#fff", color: "#64748b", fontSize: 13, fontWeight: 500, cursor: "pointer" },
-    toggleBtnActive:{ background: "#1e293b", color: "#fff", borderColor: "#1e293b" },
-    templateBtn:    { padding: "4px 10px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#f8fafc", color: "#374151", fontSize: 11, fontWeight: 500, cursor: "pointer" },
-    toast:       { position: "fixed", bottom: 24, right: 24, padding: "12px 18px", borderRadius: 10, border: "1.5px solid", fontSize: 13, fontWeight: 500, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", zIndex: 600, display: "flex", alignItems: "center", gap: 8 },
+    bellBtn:      { width: 36, height: 36, borderRadius: "50%", background: "#fff", border: "1px solid #e2e8f0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" },
+    badge:        { position: "absolute", top: -3, right: -3, background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 700, padding: "1px 4px", borderRadius: 8, border: "2px solid #f1f5f9", minWidth: 16, textAlign: "center" },
+    notifPanel:   { position: "absolute", top: 44, width: 320, background: "#fff", border: "1px solid #e8edf2", borderRadius: 14, boxShadow: "0 12px 40px rgba(0,0,0,0.12)", overflow: "hidden", zIndex: 400 },
+    notifHeader:  { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid #f1f5f9" },
+    smBtn:        { display: "flex", alignItems: "center", gap: 3, padding: "3px 8px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", fontSize: 11, color: "#64748b", cursor: "pointer" },
+    statsGrid:    { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px,1fr))", gap: 12, marginBottom: "1.75rem" },
+    statCard:     { background: "#fff", borderRadius: 14, padding: "1rem 1.25rem", boxShadow: "0 1px 6px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: 4, border: "1px solid #e8edf2" },
+    statIcon:     { width: 34, height: 34, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, marginBottom: 4 },
+    statVal:      { fontSize: 26, fontWeight: 700, color: "#0f172a", letterSpacing: "-1px" },
+    statLabel:    { fontSize: 12, color: "#64748b", fontWeight: 500 },
+    filterBar:    { display: "flex", gap: 12, marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" },
+    searchWrap:   { position: "relative", flex: "1 1 240px", minWidth: 200 },
+    searchInput:  { width: "100%", padding: "9px 12px 9px 34px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 14, color: "#0f172a", outline: "none", fontFamily: "inherit", background: "#fff", boxSizing: "border-box" },
+    roleFilters:  { display: "flex", gap: 6, flexWrap: "wrap" },
+    filterChip:       { padding: "5px 12px", borderRadius: 20, border: "1.5px solid #e2e8f0", background: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#64748b", fontFamily: "inherit" },
+    filterChipActive: { background: "#1e293b", color: "#fff", border: "1.5px solid #1e293b" },
+    tableWrap:    { background: "#fff", borderRadius: 14, border: "1px solid #e8edf2", overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" },
+    table:        { width: "100%", borderCollapse: "collapse" },
+    th:           { padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #f1f5f9", background: "#f8fafc" },
+    tr:           { transition: "background 0.1s" },
+    td:           { padding: "12px 16px", borderBottom: "1px solid #f1f5f9" },
+    actionBtn:    { padding: "5px 7px", borderRadius: 7, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 14, lineHeight: 1, display: "inline-flex", alignItems: "center" },
+    emptyState:   { padding: "3rem", textAlign: "center", color: "#94a3b8", fontSize: 14 },
+    overlay:      { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 500, padding: "1rem" },
+    modal:        { background: "#fff", borderRadius: 16, padding: "2rem", width: "100%", maxWidth: 440, boxShadow: "0 20px 60px rgba(0,0,0,0.15)" },
+    modalTitle:   { fontSize: 18, fontWeight: 700, color: "#0f172a", display: "flex", alignItems: "center" },
+    modalLabel:   { display: "block", fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" },
+    modalInput:   { width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #e2e8f0", fontSize: 14, color: "#0f172a", outline: "none", fontFamily: "inherit", boxSizing: "border-box" },
+    modalCancelBtn:  { padding: "8px 18px", borderRadius: 8, border: "1.5px solid #e2e8f0", background: "#fff", color: "#374151", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" },
+    modalSaveBtn:    { padding: "8px 18px", borderRadius: 8, border: "none", background: "#1e293b", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" },
+    toggleBtn:       { padding: "6px 14px", borderRadius: 8, border: "1.5px solid #e2e8f0", background: "#fff", color: "#64748b", fontSize: 13, fontWeight: 500, cursor: "pointer" },
+    toggleBtnActive: { background: "#1e293b", color: "#fff", border: "1.5px solid #1e293b" },
+    templateBtn:     { padding: "4px 10px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#f8fafc", color: "#374151", fontSize: 11, fontWeight: 500, cursor: "pointer" },
+    toast:           { position: "fixed", bottom: 24, right: 24, padding: "12px 18px", borderRadius: 10, border: "1.5px solid", fontSize: 13, fontWeight: 500, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", zIndex: 600, display: "flex", alignItems: "center", gap: 8 },
+    chartRow:        { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 },
+    chartCard:       { background: "#fff", borderRadius: 14, padding: "1.25rem 1.5rem", border: "1px solid #e8edf2", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" },
+    chartTitle:      { fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 4 },
 };
