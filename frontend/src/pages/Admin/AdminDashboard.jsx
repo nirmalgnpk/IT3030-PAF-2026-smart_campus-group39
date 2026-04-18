@@ -68,26 +68,45 @@ export default function AdminDashboard() {
     const { currentUser, logout } = useAuth();
     const navigate = useNavigate();
 
-    const [users, setUsers]           = useState([]);
-    const [loading, setLoading]       = useState(true);
-    const [search, setSearch]         = useState("");
-    const [roleFilter, setRoleFilter] = useState("ALL");
-    const [editUser, setEditUser]     = useState(null);
-    const [editForm, setEditForm]     = useState({});
-    const [saving, setSaving]         = useState(false);
+    const [users, setUsers]               = useState([]);
+    const [loading, setLoading]           = useState(true);
+    const [search, setSearch]             = useState("");
+    const [roleFilter, setRoleFilter]     = useState("ALL");
+    const [editUser, setEditUser]         = useState(null);
+    const [editForm, setEditForm]         = useState({});
+    const [saving, setSaving]             = useState(false);
     const [deleteTarget, setDeleteTarget] = useState(null);
-    const [toast, setToast]           = useState(null);
-    const [activeTab, setActiveTab]   = useState("users");
+    const [toast, setToast]               = useState(null);
+    const [activeTab, setActiveTab]       = useState("users");
 
-    useEffect(() => { fetchUsers(); }, []);
+    // ── Build auth header from token stored in localStorage / sessionStorage ──
+    function authHeader() {
+        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+        return token ? { Authorization: `Bearer ${token}` } : {};
+    }
+
+    useEffect(() => {
+        // Guard: only admins can access this page
+        if (currentUser && currentUser.role !== "ADMIN") {
+            navigate("/");
+            return;
+        }
+        fetchUsers();
+    }, []);
 
     async function fetchUsers() {
         setLoading(true);
         try {
-            const { data } = await axios.get("/api/users");
+            const { data } = await axios.get("/api/users", { headers: authHeader() });
             setUsers(data);
-        } catch {
-            showToast("Failed to load users", "error");
+        } catch (err) {
+            if (err.response?.status === 401 || err.response?.status === 403) {
+                showToast("Session expired — please log in again", "error");
+                logout();
+                navigate("/login");
+            } else {
+                showToast("Failed to load users", "error");
+            }
         } finally {
             setLoading(false);
         }
@@ -106,7 +125,7 @@ export default function AdminDashboard() {
     async function saveEdit() {
         setSaving(true);
         try {
-            await axios.put(`/api/users/${editUser.id}`, editForm);
+            await axios.put(`/api/users/${editUser.id}`, editForm, { headers: authHeader() });
             setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, ...editForm } : u));
             setEditUser(null);
             showToast("User updated successfully");
@@ -119,7 +138,7 @@ export default function AdminDashboard() {
 
     async function toggleStatus(user) {
         try {
-            await axios.put(`/api/users/${user.id}`, { enabled: !user.enabled });
+            await axios.put(`/api/users/${user.id}`, { enabled: !user.enabled }, { headers: authHeader() });
             setUsers(prev => prev.map(u => u.id === user.id ? { ...u, enabled: !u.enabled } : u));
             showToast(`User ${!user.enabled ? "enabled" : "disabled"}`);
         } catch {
@@ -129,7 +148,7 @@ export default function AdminDashboard() {
 
     async function confirmDelete() {
         try {
-            await axios.delete(`/api/users/${deleteTarget.id}`);
+            await axios.delete(`/api/users/${deleteTarget.id}`, { headers: authHeader() });
             setUsers(prev => prev.filter(u => u.id !== deleteTarget.id));
             setDeleteTarget(null);
             showToast("User deleted");
@@ -147,11 +166,11 @@ export default function AdminDashboard() {
     });
 
     const stats = {
-        total:      users.length,
-        students:   users.filter(u => u.role === "STUDENT" || u.role === "USER").length,
-        technicians:users.filter(u => u.role === "TECHNICIAN").length,
-        admins:     users.filter(u => u.role === "ADMIN").length,
-        active:     users.filter(u => u.enabled).length,
+        total:       users.length,
+        students:    users.filter(u => u.role === "STUDENT" || u.role === "USER").length,
+        technicians: users.filter(u => u.role === "TECHNICIAN").length,
+        admins:      users.filter(u => u.role === "ADMIN").length,
+        active:      users.filter(u => u.enabled).length,
     };
 
     return (
@@ -169,16 +188,13 @@ export default function AdminDashboard() {
 
                     <nav style={{ marginTop: "2rem" }}>
                         {[
-                            { id: "users",    icon: "👥", label: "Users" },
-                            { id: "stats",    icon: "📊", label: "Overview" },
+                            { id: "users", icon: "👥", label: "Users" },
+                            { id: "stats", icon: "📊", label: "Overview" },
                         ].map(item => (
                             <button
                                 key={item.id}
                                 onClick={() => setActiveTab(item.id)}
-                                style={{
-                                    ...S.navItem,
-                                    ...(activeTab === item.id ? S.navItemActive : {}),
-                                }}
+                                style={{ ...S.navItem, ...(activeTab === item.id ? S.navItemActive : {}) }}
                             >
                                 <span>{item.icon}</span>
                                 <span>{item.label}</span>
@@ -187,14 +203,11 @@ export default function AdminDashboard() {
 
                         <div style={{ borderTop: "1px solid #1e293b", margin: "1rem 0" }} />
 
-                        <Link to="/dashboard" style={{ ...S.navItem, textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
+                        <Link to="/" style={{ ...S.navItem, textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
                             <span>🏠</span><span>Main App</span>
                         </Link>
 
-                        <button
-                            onClick={() => { logout(); navigate("/login"); }}
-                            style={{ ...S.navItem, color: "#f87171" }}
-                        >
+                        <button onClick={() => { logout(); navigate("/login"); }} style={{ ...S.navItem, color: "#f87171" }}>
                             <span>🚪</span><span>Sign out</span>
                         </button>
                     </nav>
@@ -213,12 +226,9 @@ export default function AdminDashboard() {
 
             {/* Main */}
             <main style={S.main}>
-                {/* Header */}
                 <header style={S.header}>
                     <div>
-                        <h1 style={S.pageTitle}>
-                            {activeTab === "users" ? "User Management" : "Overview"}
-                        </h1>
+                        <h1 style={S.pageTitle}>{activeTab === "users" ? "User Management" : "Overview"}</h1>
                         <p style={S.pageSubtitle}>
                             {activeTab === "users" ? `${filtered.length} of ${users.length} users` : "Platform statistics"}
                         </p>
@@ -228,11 +238,11 @@ export default function AdminDashboard() {
                 {/* Stats */}
                 <div style={S.statsGrid}>
                     {[
-                        { label: "Total Users",   value: stats.total,       icon: "👥", color: "#3b82f6", bg: "#eff6ff" },
-                        { label: "Students",       value: stats.students,    icon: "🎓", color: "#1d4ed8", bg: "#dbeafe" },
-                        { label: "Technicians",    value: stats.technicians, icon: "🔧", color: "#15803d", bg: "#dcfce7" },
-                        { label: "Admins",         value: stats.admins,      icon: "⚡", color: "#92400e", bg: "#fef3c7" },
-                        { label: "Active",         value: stats.active,      icon: "✅", color: "#059669", bg: "#d1fae5" },
+                        { label: "Total Users",  value: stats.total,       icon: "👥", color: "#3b82f6", bg: "#eff6ff" },
+                        { label: "Students",      value: stats.students,    icon: "🎓", color: "#1d4ed8", bg: "#dbeafe" },
+                        { label: "Technicians",   value: stats.technicians, icon: "🔧", color: "#15803d", bg: "#dcfce7" },
+                        { label: "Admins",        value: stats.admins,      icon: "⚡", color: "#92400e", bg: "#fef3c7" },
+                        { label: "Active",        value: stats.active,      icon: "✅", color: "#059669", bg: "#d1fae5" },
                     ].map(s => (
                         <div key={s.label} style={S.statCard}>
                             <div style={{ ...S.statIcon, background: s.bg, color: s.color }}>{s.icon}</div>
@@ -256,14 +266,11 @@ export default function AdminDashboard() {
                                 />
                             </div>
                             <div style={S.roleFilters}>
-                                {["ALL", "STUDENT", "USER", "TECHNICIAN", "ADMIN"].map(r => (
+                                {["ALL", "STUDENT", "USER", "TECHNICIAN", "MANAGER", "ADMIN"].map(r => (
                                     <button
                                         key={r}
                                         onClick={() => setRoleFilter(r)}
-                                        style={{
-                                            ...S.filterChip,
-                                            ...(roleFilter === r ? S.filterChipActive : {}),
-                                        }}
+                                        style={{ ...S.filterChip, ...(roleFilter === r ? S.filterChipActive : {}) }}
                                     >
                                         {r === "ALL" ? "All Roles" : r}
                                     </button>
@@ -298,18 +305,16 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td style={S.td}>
-                                                <span style={{ fontSize: 13, color: "#475569" }}>{user.email}</span>
-                                            </td>
+                                            <td style={S.td}><span style={{ fontSize: 13, color: "#475569" }}>{user.email}</span></td>
                                             <td style={S.td}><RoleBadge role={user.role} /></td>
-                                            <td style={S.td}>
-                                                <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>{user.provider || "LOCAL"}</span>
-                                            </td>
+                                            <td style={S.td}><span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>{user.provider || "LOCAL"}</span></td>
                                             <td style={S.td}><StatusBadge enabled={user.enabled} /></td>
                                             <td style={S.td}>
-                                                    <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                                                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
-                                                    </span>
+                                                <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                                                    {user.createdAt
+                                                        ? new Date(user.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                                                        : "—"}
+                                                </span>
                                             </td>
                                             <td style={S.td}>
                                                 <div style={{ display: "flex", gap: 6 }}>
@@ -402,9 +407,9 @@ export default function AdminDashboard() {
             {toast && (
                 <div style={{
                     ...S.toast,
-                    background: toast.type === "error" ? "#fef2f2" : "#f0fdf4",
+                    background:  toast.type === "error" ? "#fef2f2" : "#f0fdf4",
                     borderColor: toast.type === "error" ? "#fecaca" : "#bbf7d0",
-                    color: toast.type === "error" ? "#dc2626" : "#15803d",
+                    color:       toast.type === "error" ? "#dc2626" : "#15803d",
                 }}>
                     {toast.type === "error" ? "❌" : "✅"} {toast.msg}
                 </div>
@@ -460,14 +465,12 @@ const S = {
         width: "100%", padding: "9px 12px 9px 34px",
         borderRadius: 10, border: "1.5px solid #e2e8f0",
         fontSize: 14, color: "#0f172a", outline: "none",
-        fontFamily: "inherit", background: "#fff",
-        boxSizing: "border-box",
+        fontFamily: "inherit", background: "#fff", boxSizing: "border-box",
     },
     roleFilters: { display: "flex", gap: 6, flexWrap: "wrap" },
     filterChip: {
-        padding: "5px 12px", borderRadius: 20,
-        border: "1.5px solid #e2e8f0", background: "#fff",
-        fontSize: 12, fontWeight: 600, cursor: "pointer",
+        padding: "5px 12px", borderRadius: 20, border: "1.5px solid #e2e8f0",
+        background: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer",
         color: "#64748b", fontFamily: "inherit",
     },
     filterChipActive: { background: "#1e293b", color: "#fff", borderColor: "#1e293b" },
@@ -476,48 +479,18 @@ const S = {
     th: {
         padding: "12px 16px", textAlign: "left", fontSize: 11,
         fontWeight: 700, color: "#94a3b8", textTransform: "uppercase",
-        letterSpacing: "0.06em", borderBottom: "1.5px solid #f1f5f9",
-        background: "#f8fafc",
+        letterSpacing: "0.06em", borderBottom: "1.5px solid #f1f5f9", background: "#f8fafc",
     },
     tr: { transition: "background 0.1s" },
     td: { padding: "12px 16px", borderBottom: "1px solid #f1f5f9" },
-    actionBtn: {
-        padding: "5px 8px", borderRadius: 7, border: "1px solid #e2e8f0",
-        background: "#fff", cursor: "pointer", fontSize: 14, lineHeight: 1,
-    },
+    actionBtn: { padding: "5px 8px", borderRadius: 7, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 14, lineHeight: 1 },
     emptyState: { padding: "3rem", textAlign: "center", color: "#94a3b8", fontSize: 14 },
-    overlay: {
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        zIndex: 500, padding: "1rem",
-    },
-    modal: {
-        background: "#fff", borderRadius: 16, padding: "2rem",
-        width: "100%", maxWidth: 440, boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
-    },
+    overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 500, padding: "1rem" },
+    modal: { background: "#fff", borderRadius: 16, padding: "2rem", width: "100%", maxWidth: 440, boxShadow: "0 20px 60px rgba(0,0,0,0.15)" },
     modalTitle: { fontSize: 20, fontWeight: 700, color: "#0f172a" },
     modalLabel: { display: "block", fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" },
-    modalInput: {
-        width: "100%", padding: "9px 12px", borderRadius: 8,
-        border: "1.5px solid #e2e8f0", fontSize: 14, color: "#0f172a",
-        outline: "none", fontFamily: "inherit", boxSizing: "border-box",
-    },
-    modalCancelBtn: {
-        padding: "8px 18px", borderRadius: 8, border: "1.5px solid #e2e8f0",
-        background: "#fff", color: "#374151", fontSize: 14,
-        fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
-    },
-    modalSaveBtn: {
-        padding: "8px 18px", borderRadius: 8, border: "none",
-        background: "#1e293b", color: "#fff", fontSize: 14,
-        fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-    },
-    toast: {
-        position: "fixed", bottom: 24, right: 24,
-        padding: "12px 18px", borderRadius: 10,
-        border: "1.5px solid", fontSize: 13, fontWeight: 500,
-        boxShadow: "0 4px 20px rgba(0,0,0,0.1)", zIndex: 600,
-        display: "flex", alignItems: "center", gap: 8,
-        animation: "fadeIn 0.3s ease",
-    },
+    modalInput: { width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #e2e8f0", fontSize: 14, color: "#0f172a", outline: "none", fontFamily: "inherit", boxSizing: "border-box" },
+    modalCancelBtn: { padding: "8px 18px", borderRadius: 8, border: "1.5px solid #e2e8f0", background: "#fff", color: "#374151", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" },
+    modalSaveBtn: { padding: "8px 18px", borderRadius: 8, border: "none", background: "#1e293b", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" },
+    toast: { position: "fixed", bottom: 24, right: 24, padding: "12px 18px", borderRadius: 10, border: "1.5px solid", fontSize: 13, fontWeight: 500, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", zIndex: 600, display: "flex", alignItems: "center", gap: 8 },
 };

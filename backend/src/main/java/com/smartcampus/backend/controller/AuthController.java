@@ -3,6 +3,7 @@ package com.smartcampus.backend.controller;
 import com.smartcampus.backend.model.User;
 import com.smartcampus.backend.repository.UserRepository;
 import com.smartcampus.backend.service.JwtService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -21,7 +22,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
 public class AuthController {
 
     @Autowired
@@ -56,7 +57,7 @@ public class AuthController {
         }
 
         String role = body.getOrDefault("role", "USER");
-        if (!role.matches("USER|ADMIN|TECHNICIAN|MANAGER")) role = "USER";
+        if (!role.matches("USER|ADMIN|TECHNICIAN|MANAGER|STUDENT")) role = "USER";
 
         User user = new User();
         user.setName(name.trim());
@@ -73,12 +74,15 @@ public class AuthController {
         String token = jwtService.generateToken(saved.getEmail(), saved.getRole(), saved.getId());
 
         Map<String, Object> response = new HashMap<>();
-        response.put("token",   token);
-        response.put("userId",  saved.getId());
-        response.put("role",    saved.getRole());
-        response.put("name",    saved.getName());
-        response.put("email",   saved.getEmail());
-        response.put("message", "Registration successful");
+        response.put("token",           token);
+        response.put("userId",          saved.getId());
+        response.put("role",            saved.getRole());
+        response.put("name",            saved.getName());
+        response.put("email",           saved.getEmail());
+        response.put("userName",        saved.getUserName());
+        response.put("profilePhotoUrl", saved.getProfilePhotoUrl() != null ? saved.getProfilePhotoUrl() : "");
+        response.put("provider",        saved.getProvider());
+        response.put("message",         "Registration successful");
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -159,10 +163,12 @@ public class AuthController {
     }
 
     // POST /api/auth/upload-photo/{userId}
+    // NOTE: FileUploadController.java must be DELETED — this is the only upload endpoint.
     @PostMapping("/upload-photo/{userId}")
     public ResponseEntity<Map<String, Object>> uploadPhoto(
             @PathVariable String userId,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest request) {
 
         if (file.isEmpty()) return badRequest("Please select a file to upload");
 
@@ -174,12 +180,12 @@ public class AuthController {
             return badRequest("File size must not exceed 5 MB");
 
         try {
-            Path uploadPath = Paths.get(uploadDir);
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
             Files.createDirectories(uploadPath);
 
             String original  = file.getOriginalFilename();
             String extension = (original != null && original.contains("."))
-                    ? original.substring(original.lastIndexOf(".")) : ".jpg";
+                    ? original.substring(original.lastIndexOf(".")).toLowerCase() : ".jpg";
             String filename  = userId + "_" + System.currentTimeMillis() + extension;
 
             Files.write(uploadPath.resolve(filename), file.getBytes());
@@ -189,8 +195,13 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of("message", "User not found"));
 
+            // Build full absolute URL so the frontend can display it directly
+            String baseUrl = request.getScheme() + "://"
+                    + request.getServerName() + ":"
+                    + request.getServerPort();
+            String photoUrl = baseUrl + "/uploads/profile-photos/" + filename;
+
             User user = optional.get();
-            String photoUrl = "/uploads/profile-photos/" + filename;
             user.setProfilePhotoUrl(photoUrl);
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
@@ -202,7 +213,7 @@ public class AuthController {
         }
     }
 
-    // POST /api/auth/forgot-password  (stub — implement email sending as needed)
+    // POST /api/auth/forgot-password
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, Object>> forgotPassword(@RequestBody Map<String, String> body) {
         String email = body.get("email");
@@ -210,6 +221,18 @@ public class AuthController {
             return badRequest("Email is required");
         // TODO: send reset email via JavaMailSender
         return ResponseEntity.ok(Map.of("message", "If that email exists, a reset link has been sent."));
+    }
+
+    // POST /api/auth/reset-password  (stub)
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, Object>> resetPassword(@RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(Map.of("message", "Password reset not yet implemented"));
+    }
+
+    // POST /api/auth/refresh-token  (stub)
+    @PostMapping("/refresh-token")
+    public ResponseEntity<Map<String, Object>> refreshToken(@RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(Map.of("message", "Refresh token not yet implemented"));
     }
 
     private ResponseEntity<Map<String, Object>> badRequest(String message) {
