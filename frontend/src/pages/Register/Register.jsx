@@ -1,21 +1,17 @@
+// src/pages/auth/Register.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
 import axios from "axios";
 import {
-    HiOutlineMail,
-    HiOutlineLockClosed,
-    HiOutlineUser,
-    HiOutlineAtSymbol,
-    HiOutlineEye,
-    HiOutlineEyeOff,
-    HiExclamationCircle,
-    HiCheckCircle,
+    HiOutlineMail, HiOutlineLockClosed, HiOutlineUser,
+    HiOutlineAtSymbol, HiOutlineEye, HiOutlineEyeOff,
+    HiExclamationCircle, HiCheckCircle,
 } from "react-icons/hi";
 import { MdOutlineEngineering } from "react-icons/md";
 import { RiAdminLine, RiGraduationCapLine } from "react-icons/ri";
+import OtpInput from "../../components/auth/OtpInput";
 
-/* ─── Google font loaded via @import so it works without index.html changes ─── */
 const fontStyle = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap');
 * { font-family: 'DM Sans', 'Segoe UI', sans-serif; box-sizing: border-box; }
@@ -24,6 +20,7 @@ button:hover:not(:disabled) { opacity: 0.88; }
 `;
 
 const SLIIT_DOMAIN = "@my.sliit.lk";
+const API = "http://localhost:8080/api/auth";
 
 function validateEmail(email) {
     const lower = email.trim().toLowerCase();
@@ -38,117 +35,146 @@ function validateEmail(email) {
 
 const ROLE_OPTIONS = [
     {
-        value: "TECHNICIAN",
-        label: "Technician",
-        desc: "Maintenance & repairs",
+        value: "TECHNICIAN", label: "Technician", desc: "Maintenance & repairs",
         Icon: MdOutlineEngineering,
-        bg: "linear-gradient(135deg,#f0fdf4,#dcfce7)",
-        border: "#86efac",
-        color: "#15803d",
-        activeBg: "#15803d",
-        activeColor: "#fff",
+        bg: "linear-gradient(135deg,#f0fdf4,#dcfce7)", border: "#86efac",
+        color: "#15803d", activeBg: "#15803d", activeColor: "#fff",
     },
     {
-        value: "ADMIN",
-        label: "Administrator",
-        desc: "Full system access",
+        value: "ADMIN", label: "Administrator", desc: "Full system access",
         Icon: RiAdminLine,
-        bg: "linear-gradient(135deg,#fffbeb,#fef3c7)",
-        border: "#fcd34d",
-        color: "#92400e",
-        activeBg: "#92400e",
-        activeColor: "#fff",
+        bg: "linear-gradient(135deg,#fffbeb,#fef3c7)", border: "#fcd34d",
+        color: "#92400e", activeBg: "#92400e", activeColor: "#fff",
     },
 ];
-
 const STUDENT_ROLE = {
-    value: "STUDENT",
-    label: "Student",
-    desc: "Detected from SLIIT email",
+    value: "STUDENT", label: "Student", desc: "Detected from SLIIT email",
     Icon: RiGraduationCapLine,
-    bg: "linear-gradient(135deg,#eff6ff,#dbeafe)",
-    border: "#93c5fd",
-    color: "#1d4ed8",
+    bg: "linear-gradient(135deg,#eff6ff,#dbeafe)", border: "#93c5fd", color: "#1d4ed8",
 };
 
 export default function Register() {
-    const { login } = useAuth();
-    const navigate = useNavigate();
+    const { login }    = useAuth();
+    const navigate     = useNavigate();
 
-    const [form, setForm] = useState({
-        name: "", userName: "", email: "", password: "", confirmPassword: "",
-    });
-    const [errors, setErrors]           = useState({});
-    const [serverError, setServerError] = useState("");
-    const [loading, setLoading]         = useState(false);
+    // ── Step: "form" | "otp"
+    const [step, setStep]   = useState("form");
+
+    const [form, setForm]   = useState({ name: "", userName: "", email: "", password: "", confirmPassword: "" });
+    const [errors, setErrors]             = useState({});
+    const [serverError, setServerError]   = useState("");
+    const [loading, setLoading]           = useState(false);
     const [selectedRole, setSelectedRole] = useState(null);
     const [showRolePicker, setShowRolePicker] = useState(false);
-    const [pwVisible, setPwVisible]     = useState(false);
-    const [cpwVisible, setCpwVisible]   = useState(false);
+    const [pwVisible, setPwVisible]       = useState(false);
+    const [cpwVisible, setCpwVisible]     = useState(false);
+
+    // OTP step state
+    const [otp, setOtp]             = useState("");
+    const [otpError, setOtpError]   = useState("");
+    const [otpLoading, setOtpLoading] = useState(false);
+    const [resendTimer, setResendTimer] = useState(60);
+    const [canResend, setCanResend]   = useState(false);
 
     const emailLower = form.email.trim().toLowerCase();
     const isStudent  = emailLower.endsWith(SLIIT_DOMAIN) && emailLower.length > SLIIT_DOMAIN.length;
     const hasEmail   = emailLower.length > 3 && emailLower.includes("@");
 
     useEffect(() => {
-        if (isStudent) {
-            setSelectedRole("STUDENT");
-            setShowRolePicker(false);
-        } else if (hasEmail && !isStudent) {
-            setShowRolePicker(true);
-            if (selectedRole === "STUDENT") setSelectedRole(null);
-        } else {
-            setShowRolePicker(false);
-        }
+        if (isStudent)            { setSelectedRole("STUDENT"); setShowRolePicker(false); }
+        else if (hasEmail)        { setShowRolePicker(true); if (selectedRole === "STUDENT") setSelectedRole(null); }
+        else                      { setShowRolePicker(false); }
     }, [form.email]);
 
+    // Resend countdown timer (starts when OTP step is entered)
+    useEffect(() => {
+        if (step !== "otp") return;
+        setResendTimer(60);
+        setCanResend(false);
+        const id = setInterval(() => {
+            setResendTimer(prev => {
+                if (prev <= 1) { clearInterval(id); setCanResend(true); return 0; }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(id);
+    }, [step]);
+
     function set(key) {
-        return (e) => {
-            setForm(p => ({ ...p, [key]: e.target.value }));
-            setErrors(p => ({ ...p, [key]: null }));
-        };
+        return (e) => { setForm(p => ({ ...p, [key]: e.target.value })); setErrors(p => ({ ...p, [key]: null })); };
     }
 
     function validate() {
         const e = {};
-        if (!form.name.trim())       e.name = "Full name is required.";
-        if (!form.userName.trim())   e.userName = "Username is required.";
-        if (!form.email.trim())      e.email = "Email is required.";
-        else {
-            const emailError = validateEmail(form.email);
-            if (emailError) e.email = emailError;
-        }
-        if (!selectedRole)           e.role = "Please select a role.";
-        if (!form.password)          e.password = "Password is required.";
-        else if (form.password.length < 8) e.password = "Password must be at least 8 characters.";
-        if (form.password !== form.confirmPassword)
-            e.confirmPassword = "Passwords do not match.";
+        if (!form.name.trim())     e.name     = "Full name is required.";
+        if (!form.userName.trim()) e.userName = "Username is required.";
+        if (!form.email.trim())    e.email    = "Email is required.";
+        else { const err = validateEmail(form.email); if (err) e.email = err; }
+        if (!selectedRole)         e.role     = "Please select a role.";
+        if (!form.password)        e.password = "Password is required.";
+        else if (form.password.length < 8) e.password = "Minimum 8 characters.";
+        if (form.password !== form.confirmPassword) e.confirmPassword = "Passwords do not match.";
         return e;
     }
 
-    async function handleRegister(evt) {
-        evt.preventDefault();
+    // ── Step 1: Submit form → send OTP
+    async function handleFormSubmit(e) {
+        e.preventDefault();
         setServerError("");
-        const e = validate();
-        setErrors(e);
-        if (Object.keys(e).length) return;
+        const errs = validate();
+        setErrors(errs);
+        if (Object.keys(errs).length) return;
 
         setLoading(true);
         try {
-            const { data } = await axios.post("http://localhost:8080/api/auth/register", {
-                name:      form.name.trim(),
-                userName:  form.userName.trim(),
-                email:     form.email.trim().toLowerCase(),
-                password:  form.password,
-                role:      selectedRole,
+            await axios.post(`${API}/send-register-otp`, {
+                name:     form.name.trim(),
+                userName: form.userName.trim(),
+                email:    form.email.trim().toLowerCase(),
+                password: form.password,
+                role:     selectedRole,
+            });
+            setStep("otp");
+        } catch (err) {
+            setServerError(err.response?.data?.message || "Could not send OTP. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // ── Step 2: Verify OTP → complete registration
+    async function handleOtpSubmit() {
+        if (otp.length < 6) { setOtpError("Please enter the complete 6-digit OTP."); return; }
+        setOtpError("");
+        setOtpLoading(true);
+        try {
+            const { data } = await axios.post(`${API}/verify-register-otp`, {
+                email: form.email.trim().toLowerCase(),
+                otp,
             });
             login(data);
             navigate("/dashboard");
         } catch (err) {
-            const msg = err.response?.data?.message;
-            setServerError(msg || "Registration failed. Please try again.");
+            setOtpError(err.response?.data?.message || "Invalid OTP. Please try again.");
         } finally {
-            setLoading(false);
+            setOtpLoading(false);
+        }
+    }
+
+    // ── Resend OTP
+    async function handleResend() {
+        if (!canResend) return;
+        setOtpError("");
+        try {
+            await axios.post(`${API}/send-register-otp`, {
+                name: form.name.trim(), userName: form.userName.trim(),
+                email: form.email.trim().toLowerCase(),
+                password: form.password, role: selectedRole,
+            });
+            setResendTimer(60);
+            setCanResend(false);
+        } catch {
+            setOtpError("Could not resend OTP. Please try again.");
         }
     }
 
@@ -158,14 +184,13 @@ export default function Register() {
         <>
             <style>{fontStyle}</style>
             <div style={css.page}>
-                {/* ── Left Panel ── */}
+                {/* Left Panel */}
                 <div style={css.leftPanel}>
                     <div style={css.leftInner}>
                         <div style={css.circleTopRight} />
                         <div style={css.circleMidLeft} />
                         <div style={css.circleBottomRight} />
                         <div style={css.circleSmall} />
-
                         <div style={css.leftContent}>
                             <div style={css.leftLogo}>
                                 <div style={css.leftLogoMark}>
@@ -173,185 +198,197 @@ export default function Register() {
                                 </div>
                                 <span style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>Smart Campus</span>
                             </div>
-                            <h2 style={css.leftHeading}>Join Smart Campus</h2>
+                            <h2 style={css.leftHeading}>
+                                {step === "otp" ? "Check your inbox" : "Join Smart Campus"}
+                            </h2>
                             <p style={css.leftSubtext}>
-                                Create your account to submit maintenance requests, access campus resources, and collaborate with your team.
+                                {step === "otp"
+                                    ? `We sent a 6-digit code to ${form.email}. Enter it to verify your email and complete registration.`
+                                    : "Create your account to submit maintenance requests, access campus resources, and collaborate with your team."}
                             </p>
                             <div style={css.leftBadge}>
                                 <HiCheckCircle size={16} color="#fff" />
-                                <span>Secure SLIIT campus portal</span>
+                                <span>{step === "otp" ? "OTP valid for 10 minutes" : "Secure SLIIT campus portal"}</span>
                             </div>
-
-                            <div style={css.featureList}>
-                                {[
-                                    "Submit & track maintenance requests",
-                                    "Access campus facilities online",
-                                    "Real-time notifications & updates",
-                                ].map((f, i) => (
-                                    <div key={i} style={css.featureItem}>
-                                        <HiCheckCircle size={15} color="rgba(255,255,255,0.9)" />
-                                        <span>{f}</span>
-                                    </div>
-                                ))}
-                            </div>
+                            {step === "form" && (
+                                <div style={css.featureList}>
+                                    {["Submit & track maintenance requests", "Access campus facilities online", "Real-time notifications & updates"]
+                                        .map((f, i) => (
+                                            <div key={i} style={css.featureItem}>
+                                                <HiCheckCircle size={15} color="rgba(255,255,255,0.9)" />
+                                                <span>{f}</span>
+                                            </div>
+                                        ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* ── Right Panel ── */}
+                {/* Right Panel */}
                 <div style={css.rightPanel}>
                     <div style={css.formCard}>
                         <div style={css.logoRow}>
                             <div style={css.logoMark}>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", letterSpacing: "-0.5px" }}>SC</span>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>SC</span>
                             </div>
                             <span style={css.logoText}>Smart Campus</span>
                         </div>
 
-                        <h1 style={css.title}>Create an account</h1>
-                        <p style={css.subtitle}>Fill in your details to get started</p>
+                        {/* ── OTP Step ── */}
+                        {step === "otp" ? (
+                            <>
+                                <div style={{ ...css.iconCircle, background: "linear-gradient(135deg,#eff6ff,#dbeafe)", border: "1px solid #93c5fd" }}>
+                                    📬
+                                </div>
+                                <h1 style={css.title}>Verify your email</h1>
+                                <p style={css.subtitle}>
+                                    Enter the 6-digit code sent to <strong style={{ color: "#0f172a" }}>{form.email}</strong>
+                                </p>
 
-                        {serverError && (
-                            <div style={css.serverError}>
-                                <HiExclamationCircle size={16} color="#dc2626" />
-                                <span>{serverError}</span>
-                            </div>
+                                {otpError && (
+                                    <div style={css.serverError}>
+                                        <HiExclamationCircle size={16} color="#dc2626" />
+                                        <span>{otpError}</span>
+                                    </div>
+                                )}
+
+                                <div style={{ marginBottom: "1.5rem" }}>
+                                    <OtpInput length={6} onChange={setOtp} hasError={!!otpError} />
+                                </div>
+
+                                <button
+                                    onClick={handleOtpSubmit}
+                                    style={{ ...css.submitBtn, ...(otpLoading ? css.submitDisabled : {}) }}
+                                    disabled={otpLoading}
+                                >
+                                    {otpLoading ? "Verifying…" : "Verify & Create Account →"}
+                                </button>
+
+                                <p style={{ textAlign: "center", marginTop: "1rem", fontSize: 13, color: "#64748b" }}>
+                                    Didn't receive it?{" "}
+                                    {canResend
+                                        ? <button onClick={handleResend} style={css.linkBtn}>Resend OTP</button>
+                                        : <span style={{ color: "#94a3b8" }}>Resend in {resendTimer}s</span>
+                                    }
+                                </p>
+                                <button onClick={() => setStep("form")} style={{ ...css.linkBtn, display: "block", margin: "0.5rem auto 0", fontSize: 13 }}>
+                                    ← Change email or details
+                                </button>
+                            </>
+                        ) : (
+                            /* ── Form Step ── */
+                            <>
+                                <h1 style={css.title}>Create an account</h1>
+                                <p style={css.subtitle}>Fill in your details to get started</p>
+
+                                {serverError && (
+                                    <div style={css.serverError}>
+                                        <HiExclamationCircle size={16} color="#dc2626" />
+                                        <span>{serverError}</span>
+                                    </div>
+                                )}
+
+                                <form onSubmit={handleFormSubmit} noValidate>
+                                    <div style={css.row}>
+                                        <div style={css.fieldGroup}>
+                                            <label style={css.label}>Full name</label>
+                                            <div style={css.inputWrap}>
+                                                <span style={css.inputIcon}><HiOutlineUser size={15} color="#94a3b8" /></span>
+                                                <input style={inp("name")} placeholder="John Doe" onChange={set("name")} />
+                                            </div>
+                                            {errors.name && <p style={css.errText}>{errors.name}</p>}
+                                        </div>
+                                        <div style={css.fieldGroup}>
+                                            <label style={css.label}>Username</label>
+                                            <div style={css.inputWrap}>
+                                                <span style={css.inputIcon}><HiOutlineAtSymbol size={15} color="#94a3b8" /></span>
+                                                <input style={inp("userName")} placeholder="johndoe" onChange={set("userName")} />
+                                            </div>
+                                            {errors.userName && <p style={css.errText}>{errors.userName}</p>}
+                                        </div>
+                                    </div>
+
+                                    <div style={css.fieldGroup}>
+                                        <label style={css.label}>Email address</label>
+                                        <div style={css.inputWrap}>
+                                            <span style={css.inputIcon}><HiOutlineMail size={15} color="#94a3b8" /></span>
+                                            <input style={{ ...inp("email"), paddingLeft: 36 }} placeholder="your@email.com" onChange={set("email")} autoComplete="email" />
+                                        </div>
+                                        {errors.email && <p style={css.errText}>{errors.email}</p>}
+
+                                        {isStudent && (
+                                            <div style={{ ...css.roleChip, background: STUDENT_ROLE.bg, borderColor: STUDENT_ROLE.border }}>
+                                                <STUDENT_ROLE.Icon size={16} color={STUDENT_ROLE.color} />
+                                                <div>
+                                                    <span style={{ fontWeight: 600, color: STUDENT_ROLE.color, fontSize: 13 }}>{STUDENT_ROLE.label}</span>
+                                                    <span style={{ fontSize: 11, color: "#64748b", marginLeft: 6 }}>{STUDENT_ROLE.desc}</span>
+                                                </div>
+                                                <span style={css.checkBadge}><HiCheckCircle size={12} color="#16a34a" /> Auto-detected</span>
+                                            </div>
+                                        )}
+
+                                        {showRolePicker && !isStudent && (
+                                            <div style={css.rolePicker}>
+                                                <p style={css.rolePickerLabel}>Select your role</p>
+                                                <div style={css.roleGrid}>
+                                                    {ROLE_OPTIONS.map(r => (
+                                                        <button key={r.value} type="button"
+                                                                onClick={() => setSelectedRole(r.value)}
+                                                                style={{
+                                                                    ...css.roleCard,
+                                                                    background:   selectedRole === r.value ? r.activeBg : r.bg,
+                                                                    borderColor:  selectedRole === r.value ? r.activeBg : r.border,
+                                                                    color:        selectedRole === r.value ? r.activeColor : r.color,
+                                                                    transform:    selectedRole === r.value ? "scale(1.02)" : "scale(1)",
+                                                                    boxShadow:    selectedRole === r.value ? `0 4px 16px ${r.border}99` : "none",
+                                                                }}>
+                                                            <r.Icon size={20} />
+                                                            <span style={{ fontWeight: 600, fontSize: 13 }}>{r.label}</span>
+                                                            <span style={{ fontSize: 11, opacity: 0.75 }}>{r.desc}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                {errors.role && <p style={{ ...css.errText, marginTop: 6 }}>{errors.role}</p>}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div style={css.fieldGroup}>
+                                        <label style={css.label}>Password</label>
+                                        <div style={css.inputWrap}>
+                                            <span style={css.inputIcon}><HiOutlineLockClosed size={15} color="#94a3b8" /></span>
+                                            <input type={pwVisible ? "text" : "password"} style={{ ...inp("password"), paddingLeft: 36 }} placeholder="Min. 8 characters" onChange={set("password")} autoComplete="new-password" />
+                                            <button type="button" onClick={() => setPwVisible(v => !v)} style={css.eyeBtn}>
+                                                {pwVisible ? <HiOutlineEyeOff size={15} color="#94a3b8" /> : <HiOutlineEye size={15} color="#94a3b8" />}
+                                            </button>
+                                        </div>
+                                        {errors.password && <p style={css.errText}>{errors.password}</p>}
+                                    </div>
+
+                                    <div style={css.fieldGroup}>
+                                        <label style={css.label}>Confirm password</label>
+                                        <div style={css.inputWrap}>
+                                            <span style={css.inputIcon}><HiOutlineLockClosed size={15} color="#94a3b8" /></span>
+                                            <input type={cpwVisible ? "text" : "password"} style={{ ...inp("confirmPassword"), paddingLeft: 36 }} placeholder="Repeat your password" onChange={set("confirmPassword")} autoComplete="new-password" />
+                                            <button type="button" onClick={() => setCpwVisible(v => !v)} style={css.eyeBtn}>
+                                                {cpwVisible ? <HiOutlineEyeOff size={15} color="#94a3b8" /> : <HiOutlineEye size={15} color="#94a3b8" />}
+                                            </button>
+                                        </div>
+                                        {errors.confirmPassword && <p style={css.errText}>{errors.confirmPassword}</p>}
+                                    </div>
+
+                                    <button type="submit" style={{ ...css.submitBtn, ...(loading ? css.submitDisabled : {}) }} disabled={loading}>
+                                        {loading ? "Sending OTP…" : "Continue →"}
+                                    </button>
+                                </form>
+
+                                <p style={css.loginRow}>
+                                    Already have an account?{" "}
+                                    <Link to="/login" style={css.loginLink}>Sign in</Link>
+                                </p>
+                            </>
                         )}
-
-                        <form onSubmit={handleRegister} noValidate>
-                            {/* Name + Username row */}
-                            <div style={css.row}>
-                                <div style={css.fieldGroup}>
-                                    <label style={css.label}>Full name</label>
-                                    <div style={css.inputWrap}>
-                                        <span style={css.inputIcon}><HiOutlineUser size={15} color="#94a3b8" /></span>
-                                        <input style={inp("name")} placeholder="John Doe" onChange={set("name")} />
-                                    </div>
-                                    {errors.name && <p style={css.errText}>{errors.name}</p>}
-                                </div>
-                                <div style={css.fieldGroup}>
-                                    <label style={css.label}>Username</label>
-                                    <div style={css.inputWrap}>
-                                        <span style={css.inputIcon}><HiOutlineAtSymbol size={15} color="#94a3b8" /></span>
-                                        <input style={inp("userName")} placeholder="johndoe" onChange={set("userName")} />
-                                    </div>
-                                    {errors.userName && <p style={css.errText}>{errors.userName}</p>}
-                                </div>
-                            </div>
-
-                            {/* Email */}
-                            <div style={css.fieldGroup}>
-                                <label style={css.label}>Email address</label>
-                                <div style={css.inputWrap}>
-                                    <span style={css.inputIcon}><HiOutlineMail size={15} color="#94a3b8" /></span>
-                                    <input
-                                        style={{ ...inp("email"), paddingLeft: 36 }}
-                                        placeholder="your@email.com"
-                                        onChange={set("email")}
-                                        autoComplete="email"
-                                    />
-                                </div>
-                                {errors.email && <p style={css.errText}>{errors.email}</p>}
-
-                                {/* Role auto-detect / picker */}
-                                {isStudent && (
-                                    <div style={{ ...css.roleChip, background: STUDENT_ROLE.bg, borderColor: STUDENT_ROLE.border }}>
-                                        <STUDENT_ROLE.Icon size={16} color={STUDENT_ROLE.color} />
-                                        <div>
-                                            <span style={{ fontWeight: 600, color: STUDENT_ROLE.color, fontSize: 13 }}>{STUDENT_ROLE.label}</span>
-                                            <span style={{ fontSize: 11, color: "#64748b", marginLeft: 6 }}>{STUDENT_ROLE.desc}</span>
-                                        </div>
-                                        <span style={css.checkBadge}>
-                                            <HiCheckCircle size={12} color="#16a34a" />
-                                            Auto-detected
-                                        </span>
-                                    </div>
-                                )}
-
-                                {showRolePicker && !isStudent && (
-                                    <div style={css.rolePicker}>
-                                        <p style={css.rolePickerLabel}>Select your role</p>
-                                        <div style={css.roleGrid}>
-                                            {ROLE_OPTIONS.map(r => (
-                                                <button
-                                                    key={r.value}
-                                                    type="button"
-                                                    onClick={() => setSelectedRole(r.value)}
-                                                    style={{
-                                                        ...css.roleCard,
-                                                        background: selectedRole === r.value ? r.activeBg : r.bg,
-                                                        borderColor: selectedRole === r.value ? r.activeBg : r.border,
-                                                        color: selectedRole === r.value ? r.activeColor : r.color,
-                                                        transform: selectedRole === r.value ? "scale(1.02)" : "scale(1)",
-                                                        boxShadow: selectedRole === r.value ? `0 4px 16px ${r.border}99` : "none",
-                                                    }}
-                                                >
-                                                    <r.Icon size={20} />
-                                                    <span style={{ fontWeight: 600, fontSize: 13 }}>{r.label}</span>
-                                                    <span style={{ fontSize: 11, opacity: 0.75 }}>{r.desc}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                        {errors.role && <p style={{ ...css.errText, marginTop: 6 }}>{errors.role}</p>}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Password */}
-                            <div style={css.fieldGroup}>
-                                <label style={css.label}>Password</label>
-                                <div style={css.inputWrap}>
-                                    <span style={css.inputIcon}><HiOutlineLockClosed size={15} color="#94a3b8" /></span>
-                                    <input
-                                        type={pwVisible ? "text" : "password"}
-                                        style={{ ...inp("password"), paddingLeft: 36 }}
-                                        placeholder="Min. 8 characters"
-                                        onChange={set("password")}
-                                        autoComplete="new-password"
-                                    />
-                                    <button type="button" onClick={() => setPwVisible(v => !v)} style={css.eyeBtn}>
-                                        {pwVisible
-                                            ? <HiOutlineEyeOff size={15} color="#94a3b8" />
-                                            : <HiOutlineEye size={15} color="#94a3b8" />}
-                                    </button>
-                                </div>
-                                {errors.password && <p style={css.errText}>{errors.password}</p>}
-                            </div>
-
-                            {/* Confirm Password */}
-                            <div style={css.fieldGroup}>
-                                <label style={css.label}>Confirm password</label>
-                                <div style={css.inputWrap}>
-                                    <span style={css.inputIcon}><HiOutlineLockClosed size={15} color="#94a3b8" /></span>
-                                    <input
-                                        type={cpwVisible ? "text" : "password"}
-                                        style={{ ...inp("confirmPassword"), paddingLeft: 36 }}
-                                        placeholder="Repeat your password"
-                                        onChange={set("confirmPassword")}
-                                        autoComplete="new-password"
-                                    />
-                                    <button type="button" onClick={() => setCpwVisible(v => !v)} style={css.eyeBtn}>
-                                        {cpwVisible
-                                            ? <HiOutlineEyeOff size={15} color="#94a3b8" />
-                                            : <HiOutlineEye size={15} color="#94a3b8" />}
-                                    </button>
-                                </div>
-                                {errors.confirmPassword && <p style={css.errText}>{errors.confirmPassword}</p>}
-                            </div>
-
-                            <button
-                                type="submit"
-                                style={{ ...css.submitBtn, ...(loading ? css.submitDisabled : {}) }}
-                                disabled={loading}
-                            >
-                                {loading ? "Creating account…" : "Create account →"}
-                            </button>
-                        </form>
-
-                        <p style={css.loginRow}>
-                            Already have an account?{" "}
-                            <Link to="/login" style={css.loginLink}>Sign in</Link>
-                        </p>
                     </div>
                 </div>
             </div>
@@ -359,180 +396,50 @@ export default function Register() {
     );
 }
 
+/* ── Styles (same as original, extended) ────────────────────────────────── */
 const css = {
-    page: {
-        minHeight: "100vh",
-        display: "flex",
-        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
-        overflow: "hidden",
-    },
-
-    /* ── Left Panel ── */
-    leftPanel: {
-        width: "42%",
-        minHeight: "100vh",
-        background: "linear-gradient(145deg, #e84545 0%, #c0392b 40%, #e05c32 80%, #f08040 100%)",
-        position: "relative",
-        overflow: "hidden",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-    },
+    page: { minHeight: "100vh", display: "flex", fontFamily: "'DM Sans', 'Segoe UI', sans-serif", overflow: "hidden" },
+    leftPanel: { width: "42%", minHeight: "100vh", background: "linear-gradient(145deg, #e84545 0%, #c0392b 40%, #e05c32 80%, #f08040 100%)", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" },
     leftInner: { position: "relative", zIndex: 2, padding: "3rem 2.5rem", width: "100%" },
-    circleTopRight: {
-        position: "absolute", top: "-80px", right: "-80px",
-        width: 300, height: 300, borderRadius: "50%",
-        background: "rgba(255,255,255,0.08)", pointerEvents: "none",
-    },
-    circleMidLeft: {
-        position: "absolute", top: "38%", left: "-60px",
-        width: 220, height: 220, borderRadius: "50%",
-        background: "rgba(255,255,255,0.06)", pointerEvents: "none",
-    },
-    circleBottomRight: {
-        position: "absolute", bottom: "-60px", right: "10%",
-        width: 180, height: 180, borderRadius: "50%",
-        background: "rgba(255,255,255,0.07)", pointerEvents: "none",
-    },
-    circleSmall: {
-        position: "absolute", top: "22%", right: "15%",
-        width: 90, height: 90, borderRadius: "50%",
-        background: "rgba(255,255,255,0.1)", pointerEvents: "none",
-    },
+    circleTopRight:    { position: "absolute", top: "-80px",   right: "-80px", width: 300, height: 300, borderRadius: "50%", background: "rgba(255,255,255,0.08)", pointerEvents: "none" },
+    circleMidLeft:     { position: "absolute", top: "38%",     left: "-60px",  width: 220, height: 220, borderRadius: "50%", background: "rgba(255,255,255,0.06)", pointerEvents: "none" },
+    circleBottomRight: { position: "absolute", bottom: "-60px",right: "10%",   width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.07)", pointerEvents: "none" },
+    circleSmall:       { position: "absolute", top: "22%",     right: "15%",   width: 90,  height: 90,  borderRadius: "50%", background: "rgba(255,255,255,0.1)",  pointerEvents: "none" },
     leftContent: { position: "relative", zIndex: 3 },
-    leftLogo: {
-        display: "flex", alignItems: "center", gap: 10,
-        marginBottom: "3rem",
-    },
-    leftLogoMark: {
-        width: 34, height: 34, borderRadius: 9,
-        background: "rgba(255,255,255,0.2)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        backdropFilter: "blur(4px)",
-    },
-    leftHeading: {
-        fontSize: 34, fontWeight: 700, color: "#fff",
-        marginBottom: 14, lineHeight: 1.2, letterSpacing: "-0.5px",
-    },
-    leftSubtext: {
-        fontSize: 14, color: "rgba(255,255,255,0.8)",
-        lineHeight: 1.65, marginBottom: 24, maxWidth: 300,
-    },
-    leftBadge: {
-        display: "inline-flex", alignItems: "center", gap: 7,
-        background: "rgba(255,255,255,0.15)", backdropFilter: "blur(6px)",
-        borderRadius: 30, padding: "7px 14px",
-        fontSize: 13, color: "#fff", fontWeight: 500,
-        border: "1px solid rgba(255,255,255,0.2)",
-        marginBottom: 28,
-    },
+    leftLogo: { display: "flex", alignItems: "center", gap: 10, marginBottom: "3rem" },
+    leftLogoMark: { width: 34, height: 34, borderRadius: 9, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" },
+    leftHeading: { fontSize: 34, fontWeight: 700, color: "#fff", marginBottom: 14, lineHeight: 1.2, letterSpacing: "-0.5px" },
+    leftSubtext: { fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.65, marginBottom: 24, maxWidth: 300 },
+    leftBadge: { display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.15)", backdropFilter: "blur(6px)", borderRadius: 30, padding: "7px 14px", fontSize: 13, color: "#fff", fontWeight: 500, border: "1px solid rgba(255,255,255,0.2)", marginBottom: 28 },
     featureList: { display: "flex", flexDirection: "column", gap: 10 },
-    featureItem: {
-        display: "flex", alignItems: "center", gap: 9,
-        fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 400,
-    },
-
-    /* ── Right Panel ── */
-    rightPanel: {
-        flex: 1,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f8fafc",
-        padding: "2rem 1.5rem",
-        overflowY: "auto",
-    },
-    formCard: {
-        background: "#fff",
-        borderRadius: 20,
-        border: "1px solid #e8edf2",
-        padding: "2.25rem 2.25rem",
-        width: "100%",
-        maxWidth: 440,
-        boxShadow: "0 4px 40px rgba(0,0,0,0.06)",
-    },
-
+    featureItem: { display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: "rgba(255,255,255,0.85)" },
+    rightPanel: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", padding: "2rem 1.5rem", overflowY: "auto" },
+    formCard: { background: "#fff", borderRadius: 20, border: "1px solid #e8edf2", padding: "2.25rem 2.25rem", width: "100%", maxWidth: 440, boxShadow: "0 4px 40px rgba(0,0,0,0.06)" },
     logoRow: { display: "flex", alignItems: "center", gap: 10, marginBottom: "1.5rem" },
-    logoMark: {
-        width: 36, height: 36, borderRadius: 10,
-        background: "linear-gradient(135deg, #1e293b, #334155)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: "0 2px 8px rgba(30,41,59,0.3)",
-    },
+    logoMark: { width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #1e293b, #334155)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(30,41,59,0.3)" },
     logoText: { fontSize: 15, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px" },
+    iconCircle: { width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(135deg,#fef3c7,#fde68a)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: "1.25rem", border: "1px solid #fcd34d" },
     title: { fontSize: 24, fontWeight: 700, color: "#0f172a", marginBottom: 4, letterSpacing: "-0.5px" },
     subtitle: { fontSize: 14, color: "#64748b", marginBottom: "1.5rem" },
-
-    row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 0 },
+    row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
     fieldGroup: { marginBottom: "1rem" },
     label: { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 },
     inputWrap: { position: "relative", display: "flex", alignItems: "center" },
-    inputIcon: {
-        position: "absolute", left: 11, pointerEvents: "none",
-        display: "flex", alignItems: "center",
-    },
-    input: {
-        width: "100%", padding: "9px 38px 9px 36px",
-        borderRadius: 10, border: "1.5px solid #e2e8f0",
-        fontSize: 14, color: "#0f172a", outline: "none",
-        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
-        boxSizing: "border-box", background: "#f8fafc",
-        transition: "border-color 0.2s, box-shadow 0.2s",
-    },
+    inputIcon: { position: "absolute", left: 11, pointerEvents: "none", display: "flex", alignItems: "center" },
+    input: { width: "100%", padding: "9px 38px 9px 36px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 14, color: "#0f172a", outline: "none", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", background: "#f8fafc", transition: "border-color 0.2s, box-shadow 0.2s" },
     inputErr: { borderColor: "#f87171", background: "#fff5f5" },
-    eyeBtn: {
-        position: "absolute", right: 10, background: "none", border: "none",
-        cursor: "pointer", padding: 2, lineHeight: 1, display: "flex", alignItems: "center",
-    },
+    eyeBtn: { position: "absolute", right: 10, background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" },
     errText: { fontSize: 12, color: "#dc2626", marginTop: 4 },
-
-    roleChip: {
-        display: "flex", alignItems: "center", gap: 8,
-        marginTop: 8, padding: "8px 12px", borderRadius: 10,
-        border: "1.5px solid", fontSize: 13, flexWrap: "wrap",
-    },
-    checkBadge: {
-        marginLeft: "auto", fontSize: 11, fontWeight: 600,
-        background: "#dcfce7", color: "#16a34a",
-        padding: "2px 8px", borderRadius: 20,
-        display: "flex", alignItems: "center", gap: 4,
-    },
-    rolePicker: {
-        marginTop: 10, padding: "12px 14px",
-        background: "#f8fafc", borderRadius: 12,
-        border: "1.5px solid #e2e8f0",
-    },
-    rolePickerLabel: {
-        fontSize: 12, fontWeight: 600, color: "#64748b",
-        marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em",
-    },
+    roleChip: { display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "8px 12px", borderRadius: 10, border: "1.5px solid", fontSize: 13, flexWrap: "wrap" },
+    checkBadge: { marginLeft: "auto", fontSize: 11, fontWeight: 600, background: "#dcfce7", color: "#16a34a", padding: "2px 8px", borderRadius: 20, display: "flex", alignItems: "center", gap: 4 },
+    rolePicker: { marginTop: 10, padding: "12px 14px", background: "#f8fafc", borderRadius: 12, border: "1.5px solid #e2e8f0" },
+    rolePickerLabel: { fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" },
     roleGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 },
-    roleCard: {
-        display: "flex", flexDirection: "column", alignItems: "flex-start",
-        gap: 3, padding: "10px 12px", borderRadius: 10,
-        border: "1.5px solid", cursor: "pointer",
-        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
-        textAlign: "left", transition: "all 0.18s ease",
-    },
-
-    submitBtn: {
-        width: "100%", padding: "11px",
-        background: "linear-gradient(135deg, #1e293b, #0f172a)",
-        color: "#fff", border: "none", borderRadius: 10,
-        fontSize: 14, fontWeight: 600, cursor: "pointer",
-        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
-        marginTop: 4, letterSpacing: "0.01em",
-        boxShadow: "0 2px 12px rgba(15,23,42,0.3)",
-        transition: "opacity 0.2s",
-    },
+    roleCard: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3, padding: "10px 12px", borderRadius: 10, border: "1.5px solid", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textAlign: "left", transition: "all 0.18s ease" },
+    submitBtn: { width: "100%", padding: "11px", background: "linear-gradient(135deg, #1e293b, #0f172a)", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 4, boxShadow: "0 2px 12px rgba(15,23,42,0.3)", transition: "opacity 0.2s" },
     submitDisabled: { opacity: 0.65, cursor: "not-allowed" },
-
-    serverError: {
-        background: "#fef2f2", border: "1.5px solid #fecaca",
-        borderRadius: 10, padding: "10px 14px",
-        fontSize: 13, color: "#dc2626", marginBottom: "1rem",
-        display: "flex", alignItems: "center", gap: 8,
-    },
+    serverError: { background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#dc2626", marginBottom: "1rem", display: "flex", alignItems: "center", gap: 8 },
     loginRow: { textAlign: "center", marginTop: "1.25rem", fontSize: 13, color: "#64748b" },
     loginLink: { color: "#3b82f6", textDecoration: "none", fontWeight: 600 },
+    linkBtn: { background: "none", border: "none", color: "#3b82f6", fontWeight: 600, cursor: "pointer", padding: 0, fontFamily: "'DM Sans', sans-serif", fontSize: 13 },
 };

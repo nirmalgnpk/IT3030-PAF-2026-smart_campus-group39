@@ -2,7 +2,9 @@ package com.smartcampus.backend.controller;
 
 import com.smartcampus.backend.model.User;
 import com.smartcampus.backend.repository.UserRepository;
+import com.smartcampus.backend.service.EmailService;
 import com.smartcampus.backend.service.JwtService;
+import com.smartcampus.backend.service.OtpService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,30 +21,41 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
 public class AuthController {
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private JwtService jwtService;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    @Autowired private UserRepository  userRepository;
+    @Autowired private JwtService      jwtService;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private OtpService      otpService;
+    @Autowired private EmailService    emailService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
 
-    // POST /api/auth/register
-    @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> register(@RequestBody Map<String, String> body) {
+    // Pending registrations: email → form data (password already encoded)
+    private final Map<String, Map<String, String>> pendingRegistrations = new ConcurrentHashMap<>();
+
+    // Short-lived reset tokens: email → UUID  (consumed after /forgot-password/reset)
+    private final Map<String, String> resetTokens = new ConcurrentHashMap<>();
+
+    // =========================================================================
+    //  REGISTRATION — Step 1: validate, store pending, send OTP
+    // =========================================================================
+
+    @PostMapping("/send-register-otp")
+    public ResponseEntity<Map<String, Object>> sendRegisterOtp(@RequestBody Map<String, String> body) {
+
         String name     = body.get("name");
+        String userName = body.get("userName");
         String email    = body.get("email");
         String password = body.get("password");
+        String role     = body.getOrDefault("role", "USER");
 
         if (name == null || name.isBlank())
             return badRequest("Name is required");
@@ -51,26 +64,90 @@ public class AuthController {
         if (password == null || password.length() < 6)
             return badRequest("Password must be at least 6 characters");
 
-        if (userRepository.existsByEmail(email.toLowerCase().trim())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("message", "This email address is already registered"));
-        }
+        String normalizedEmail = email.toLowerCase().trim();
 
-        String role = body.getOrDefault("role", "USER");
+        if (userRepository.existsByEmail(normalizedEmail))
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "An account with this email already exists."));
+
+        String resolvedUserName = (userName != null && !userName.isBlank())
+                ? userName.trim() : normalizedEmail.split("@")[0];
+
+        if (userRepository.existsByUserName(resolvedUserName))
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "Username is already taken."));
+
         if (!role.matches("USER|ADMIN|TECHNICIAN|MANAGER|STUDENT")) role = "USER";
 
+        Map<String, String> pending = new HashMap<>();
+        pending.put("name",     name.trim());
+        pending.put("userName", resolvedUserName);
+        pending.put("email",    normalizedEmail);
+        pending.put("password", passwordEncoder.encode(password));
+        pending.put("role",     role);
+        pendingRegistrations.put(normalizedEmail, pending);
+
+        String otp = otpService.generateAndStore(normalizedEmail);
+        try {
+            emailService.sendOtp(normalizedEmail, otp, "REGISTER");
+        } catch (Exception e) {
+            pendingRegistrations.remove(normalizedEmail);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Failed to send OTP email. Please try again."));
+        }
+
+        return ResponseEntity.ok(Map.of("message", "OTP sent to " + normalizedEmail));
+    }
+
+    // =========================================================================
+    //  REGISTRATION — Step 2: verify OTP, save user, return JWT
+    // =========================================================================
+
+    @PostMapping("/verify-register-otp")
+    public ResponseEntity<Map<String, Object>> verifyRegisterOtp(@RequestBody Map<String, String> body) {
+
+        String email = body.get("email");
+        String otp   = body.get("otp");
+
+        if (email == null || otp == null)
+            return badRequest("Email and OTP are required");
+
+        String normalizedEmail = email.toLowerCase().trim();
+
+        if (!otpService.verify(normalizedEmail, otp.trim()))
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid or expired OTP. Please try again."));
+
+        Map<String, String> pending = pendingRegistrations.get(normalizedEmail);
+        if (pending == null) {
+            otpService.remove(normalizedEmail);
+            return ResponseEntity.status(HttpStatus.GONE)
+                    .body(Map.of("message", "Registration session expired. Please start again."));
+        }
+
+        if (userRepository.existsByEmail(normalizedEmail)) {
+            pendingRegistrations.remove(normalizedEmail);
+            otpService.remove(normalizedEmail);
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "An account with this email already exists."));
+        }
+
         User user = new User();
-        user.setName(name.trim());
-        user.setEmail(email.toLowerCase().trim());
-        user.setUserName(body.getOrDefault("userName", email.split("@")[0]).trim());
-        user.setPassword(passwordEncoder.encode(password));
-        user.setRole(role);
+        user.setName(pending.get("name"));
+        user.setUserName(pending.get("userName"));
+        user.setEmail(normalizedEmail);
+        user.setPassword(pending.get("password"));
+        user.setRole(pending.get("role"));
         user.setProvider("LOCAL");
         user.setEnabled(true);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
 
         User saved = userRepository.save(user);
+
+        otpService.remove(normalizedEmail);
+        pendingRegistrations.remove(normalizedEmail);
+
         String token = jwtService.generateToken(saved.getEmail(), saved.getRole(), saved.getId());
 
         Map<String, Object> response = new HashMap<>();
@@ -86,9 +163,13 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // POST /api/auth/login
+    // =========================================================================
+    //  LOGIN
+    // =========================================================================
+
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> body) {
+
         String email    = body.get("email");
         String password = body.get("password");
 
@@ -126,7 +207,10 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // GET /api/auth/verify
+    // =========================================================================
+    //  TOKEN VERIFY / LOGOUT / REFRESH
+    // =========================================================================
+
     @GetMapping("/verify")
     public ResponseEntity<Map<String, Object>> verifyToken(
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
@@ -140,7 +224,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("valid", false, "message", "Token is invalid or has expired"));
 
-        String userId = jwtService.extractUserId(token);
+        String         userId  = jwtService.extractUserId(token);
         Optional<User> userOpt = userRepository.findById(userId);
 
         Map<String, Object> resp = new HashMap<>();
@@ -156,14 +240,20 @@ public class AuthController {
         return ResponseEntity.ok(resp);
     }
 
-    // POST /api/auth/logout  (stateless — just a success response)
     @PostMapping("/logout")
     public ResponseEntity<Map<String, Object>> logout() {
         return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
     }
 
-    // POST /api/auth/upload-photo/{userId}
-    // NOTE: FileUploadController.java must be DELETED — this is the only upload endpoint.
+    @PostMapping("/refresh-token")
+    public ResponseEntity<Map<String, Object>> refreshToken(@RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(Map.of("message", "Refresh token not yet implemented"));
+    }
+
+    // =========================================================================
+    //  PROFILE PHOTO UPLOAD
+    // =========================================================================
+
     @PostMapping("/upload-photo/{userId}")
     public ResponseEntity<Map<String, Object>> uploadPhoto(
             @PathVariable String userId,
@@ -195,10 +285,7 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of("message", "User not found"));
 
-            // Build full absolute URL so the frontend can display it directly
-            String baseUrl = request.getScheme() + "://"
-                    + request.getServerName() + ":"
-                    + request.getServerPort();
+            String baseUrl  = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort();
             String photoUrl = baseUrl + "/uploads/profile-photos/" + filename;
 
             User user = optional.get();
@@ -213,27 +300,123 @@ public class AuthController {
         }
     }
 
-    // POST /api/auth/forgot-password
-    @PostMapping("/forgot-password")
-    public ResponseEntity<Map<String, Object>> forgotPassword(@RequestBody Map<String, String> body) {
+    // =========================================================================
+    //  FORGOT PASSWORD — Step 1: send OTP
+    // =========================================================================
+
+    @PostMapping("/forgot-password/send-otp")
+    public ResponseEntity<Map<String, Object>> forgotPasswordSendOtp(@RequestBody Map<String, String> body) {
+
         String email = body.get("email");
         if (email == null || email.isBlank())
             return badRequest("Email is required");
-        // TODO: send reset email via JavaMailSender
-        return ResponseEntity.ok(Map.of("message", "If that email exists, a reset link has been sent."));
+
+        String normalizedEmail = email.toLowerCase().trim();
+
+        if (!userRepository.existsByEmail(normalizedEmail))
+            return ResponseEntity.ok(Map.of("message", "If that email exists, an OTP has been sent."));
+
+        String otp = otpService.generateAndStore(normalizedEmail);
+        try {
+            emailService.sendOtp(normalizedEmail, otp, "RESET_PASSWORD");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Failed to send OTP. Please try again."));
+        }
+
+        return ResponseEntity.ok(Map.of("message", "OTP sent to " + normalizedEmail));
     }
 
-    // POST /api/auth/reset-password  (stub)
+    // =========================================================================
+    //  FORGOT PASSWORD — Step 2: verify OTP, issue reset token
+    // =========================================================================
+
+    @PostMapping("/forgot-password/verify-otp")
+    public ResponseEntity<Map<String, Object>> forgotPasswordVerifyOtp(@RequestBody Map<String, String> body) {
+
+        String email = body.get("email");
+        String otp   = body.get("otp");
+
+        if (email == null || otp == null)
+            return badRequest("Email and OTP are required");
+
+        String normalizedEmail = email.toLowerCase().trim();
+
+        if (!otpService.verify(normalizedEmail, otp.trim()))
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid or expired OTP. Please try again."));
+
+        String token = UUID.randomUUID().toString();
+        resetTokens.put(normalizedEmail, token);
+        otpService.remove(normalizedEmail);
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("resetToken", token);
+        resp.put("email",      normalizedEmail);
+        resp.put("message",    "OTP verified. You may now reset your password.");
+        return ResponseEntity.ok(resp);
+    }
+
+    // =========================================================================
+    //  FORGOT PASSWORD — Step 3: set new password
+    // =========================================================================
+
+    @PostMapping("/forgot-password/reset")
+    public ResponseEntity<Map<String, Object>> forgotPasswordReset(@RequestBody Map<String, String> body) {
+
+        String email       = body.get("email");
+        String resetToken  = body.get("resetToken");
+        String newPassword = body.get("newPassword");
+
+        if (email == null || resetToken == null || newPassword == null)
+            return badRequest("Email, reset token, and new password are required");
+
+        String normalizedEmail = email.toLowerCase().trim();
+        String storedToken     = resetTokens.get(normalizedEmail);
+
+        if (storedToken == null || !storedToken.equals(resetToken))
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid or expired reset session. Please start again."));
+
+        if (newPassword.length() < 6)
+            return badRequest("Password must be at least 6 characters");
+
+        Optional<User> optional = userRepository.findByEmail(normalizedEmail);
+        if (optional.isEmpty()) {
+            resetTokens.remove(normalizedEmail);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Account not found"));
+        }
+
+        User user = optional.get();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        resetTokens.remove(normalizedEmail);
+
+        return ResponseEntity.ok(Map.of("message", "Password updated successfully. You may now sign in."));
+    }
+
+    // =========================================================================
+    //  Legacy stubs — kept for backward compatibility
+    // =========================================================================
+
+    @Deprecated
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Map<String, Object>> forgotPasswordLegacy(@RequestBody Map<String, String> body) {
+        return forgotPasswordSendOtp(body);
+    }
+
+    @Deprecated
     @PostMapping("/reset-password")
-    public ResponseEntity<Map<String, Object>> resetPassword(@RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(Map.of("message", "Password reset not yet implemented"));
+    public ResponseEntity<Map<String, Object>> resetPasswordLegacy(@RequestBody Map<String, String> body) {
+        return badRequest("Please use /api/auth/forgot-password/reset with a valid OTP reset token.");
     }
 
-    // POST /api/auth/refresh-token  (stub)
-    @PostMapping("/refresh-token")
-    public ResponseEntity<Map<String, Object>> refreshToken(@RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(Map.of("message", "Refresh token not yet implemented"));
-    }
+    // =========================================================================
+    //  Helpers
+    // =========================================================================
 
     private ResponseEntity<Map<String, Object>> badRequest(String message) {
         return ResponseEntity.badRequest().body(Map.of("message", message));

@@ -1,7 +1,9 @@
 package com.smartcampus.backend.service;
 
 import com.smartcampus.backend.model.Notification;
+import com.smartcampus.backend.model.User;
 import com.smartcampus.backend.repository.NotificationRepository;
+import com.smartcampus.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -11,12 +13,14 @@ import java.util.Optional;
 @Service
 public class NotificationService {
 
-    @Autowired
-    private NotificationRepository notificationRepository;
+    @Autowired private NotificationRepository notificationRepository;
+    @Autowired private UserRepository userRepository;
 
     public Notification createNotification(String userId, String type,
                                            String title, String message, String relatedId) {
-        return notificationRepository.save(new Notification(userId, type, title, message, relatedId));
+        return notificationRepository.save(
+                new Notification(userId, type, title, message, relatedId)
+        );
     }
 
     public List<Notification> getUserNotifications(String userId) {
@@ -60,5 +64,18 @@ public class NotificationService {
 
     public void deleteAllForUser(String userId) {
         notificationRepository.deleteByUserId(userId);
+    }
+
+    /**
+     * Broadcast a SYSTEM notification to every user in the database.
+     * Returns the number of users notified.
+     */
+    public int broadcastToAll(String title, String message) {
+        List<User> allUsers = userRepository.findAll();
+        List<Notification> notifications = allUsers.stream()
+                .map(u -> new Notification(u.getId(), "SYSTEM", title, message, ""))
+                .toList();
+        notificationRepository.saveAll(notifications);
+        return notifications.size();
     }
 }
