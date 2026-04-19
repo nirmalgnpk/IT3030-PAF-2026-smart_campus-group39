@@ -299,8 +299,8 @@ const BookingDetail = () => {
                                 </>
                             )}
 
-                            {/* APPROVED: Cancel button */}
-                            {booking.status === 'APPROVED' && (
+                            {/* APPROVED: Cancel button (Not Admin only) */}
+                            {booking.status === 'APPROVED' && !isAdmin && (
                                 <button
                                     onClick={handleCancelClick}
                                     className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"

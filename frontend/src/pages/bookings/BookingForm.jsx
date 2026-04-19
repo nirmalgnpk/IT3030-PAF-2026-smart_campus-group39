@@ -17,7 +17,9 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState('');
     const [resourceData, setResourceData] = useState(null);
+    // eslint-disable-next-line no-unused-vars
     const [resourceLoading, setResourceLoading] = useState(true);
+    // eslint-disable-next-line no-unused-vars
     const [resourceError, setResourceError] = useState(null);
 
     // Fetch resource details when component mounts or resourceId changes

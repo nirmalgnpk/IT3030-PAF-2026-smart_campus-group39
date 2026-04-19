@@ -56,7 +56,9 @@ const BookingCard = ({ booking, onApprove, onReject, onCancel, isAdmin }) => {
             <div style={styles.card}>
                 {/* Header */}
                 <div style={styles.header}>
-                    <h3 style={styles.resourceName}>{booking.resourceName}</h3>
+                    <h3 style={styles.resourceName}>
+                        {booking.resourceName || 'Resource'}
+                    </h3>
                     <span style={{
                         ...styles.statusBadge,
                         backgroundColor: getStatusBg(booking.status),
@@ -132,8 +134,8 @@ const BookingCard = ({ booking, onApprove, onReject, onCancel, isAdmin }) => {
                         </button>
                     )}
 
-                    {/* APPROVED: Cancel button */}
-                    {booking.status === 'APPROVED' && (
+                    {/* APPROVED: Cancel button (Not Admin only) */}
+                    {booking.status === 'APPROVED' && !isAdmin && (
                         <button
                             onClick={() => onCancel(booking.id)}
                             style={styles.btnCancel}

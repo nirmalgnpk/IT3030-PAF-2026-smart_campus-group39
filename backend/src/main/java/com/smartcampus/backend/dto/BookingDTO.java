@@ -9,6 +9,8 @@ public class BookingDTO {
     @NotBlank(message = "Resource ID is required")
     private String resourceId;
 
+    private String resourceName;
+
     @NotBlank(message = "User ID is required")
     private String userId;
 
@@ -40,6 +42,14 @@ public class BookingDTO {
 
     public void setResourceId(String resourceId) {
         this.resourceId = resourceId;
+    }
+
+    public String getResourceName() {
+        return resourceName;
+    }
+
+    public void setResourceName(String resourceName) {
+        this.resourceName = resourceName;
     }
 
     public String getUserId() {

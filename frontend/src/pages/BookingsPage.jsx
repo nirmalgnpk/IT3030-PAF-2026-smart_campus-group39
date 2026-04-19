@@ -12,13 +12,12 @@ const BookingsPage = () => {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // eslint-disable-next-line no-unused-vars
   const [bookings, setBookings] = useState([]);
   const [stats, setStats] = useState([
     { label: 'Total Bookings', value: '0' },
     { label: 'Approved', value: '0' },
-    { label: 'Pending', value: '0' },
     { label: 'Rejected', value: '0' },
-    { label: 'Cancelled', value: '0' },
   ]);
 
   const { currentUser } = useAuth();
@@ -34,16 +33,12 @@ const BookingsPage = () => {
         // Calculate stats
         const total = data?.length || 0;
         const approved = data?.filter(b => b.status === 'APPROVED').length || 0;
-        const pending = data?.filter(b => b.status === 'PENDING').length || 0;
         const rejected = data?.filter(b => b.status === 'REJECTED').length || 0;
-        const cancelled = data?.filter(b => b.status === 'CANCELLED').length || 0;
         
         setStats([
           { label: 'Total Bookings', value: total.toString() },
           { label: 'Approved', value: approved.toString() },
-          { label: 'Pending', value: pending.toString() },
           { label: 'Rejected', value: rejected.toString() },
-          { label: 'Cancelled', value: cancelled.toString() },
         ]);
       } catch (err) {
         console.error('Error fetching bookings stats:', err);

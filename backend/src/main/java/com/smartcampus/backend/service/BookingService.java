@@ -11,23 +11,36 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class BookingService {
 
+    private static final Logger logger = LoggerFactory.getLogger(BookingService.class);
+
     @Autowired
     private BookingRepository bookingRepository;
 
+    @Autowired
+    private ResourceService resourceService;
+
     public List<Booking> getAllBookings() {
-        return bookingRepository.findAll();
+        List<Booking> bookings = bookingRepository.findAll();
+        return enrichBookingsWithResourceNames(bookings);
     }
 
     public List<Booking> getBookingsByUser(String userId) {
-        return bookingRepository.findByUserId(userId);
+        List<Booking> bookings = bookingRepository.findByUserId(userId);
+        return enrichBookingsWithResourceNames(bookings);
     }
 
     public Optional<Booking> getBookingById(String id) {
-        return bookingRepository.findById(id);
+        Optional<Booking> booking = bookingRepository.findById(id);
+        if (booking.isPresent()) {
+            enrichBookingWithResourceName(booking.get());
+        }
+        return booking;
     }
 
     public Booking createBooking(BookingDTO dto) {
@@ -52,9 +65,15 @@ public class BookingService {
             }
         }
 
+        // Fetch resource name
+        String resourceName = resourceService.getResourceById(dto.getResourceId())
+                .map(resource -> resource.getName())
+                .orElse("Unknown Resource");
+
         // Create new booking
         Booking booking = new Booking();
         booking.setResourceId(dto.getResourceId());
+        booking.setResourceName(resourceName);
         booking.setUserId(dto.getUserId());
         booking.setUserName(dto.getUserName());
         booking.setUserEmail(dto.getUserEmail());
@@ -115,15 +134,17 @@ public class BookingService {
     public List<Booking> filterBookings(String status, String userId, String resourceId) {
         List<Booking> bookings = bookingRepository.findAll();
 
-        return bookings.stream()
+        bookings = bookings.stream()
             .filter(b -> status == null || status.equals(b.getStatus()))
             .filter(b -> userId == null || userId.equals(b.getUserId()))
             .filter(b -> resourceId == null || resourceId.equals(b.getResourceId()))
             .collect(Collectors.toList());
+        
+        return enrichBookingsWithResourceNames(bookings);
     }
 
     public void deleteBooking(String id) {
-        Booking booking = bookingRepository.findById(id)
+        bookingRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Booking not found"));
 
         bookingRepository.deleteById(id);
@@ -132,5 +153,44 @@ public class BookingService {
     private boolean hasTimeConflict(String newStart, String newEnd, 
                                    String existingStart, String existingEnd) {
         return newStart.compareTo(existingEnd) < 0 && newEnd.compareTo(existingStart) > 0;
+    }
+
+    /**
+     * Enrich a single booking with resource name if missing
+     */
+    private void enrichBookingWithResourceName(Booking booking) {
+        String currentResourceName = booking.getResourceName();
+        if (currentResourceName == null || currentResourceName.trim().isEmpty()) {
+            String resourceId = booking.getResourceId();
+            logger.debug("Processing booking {} with resourceId: {}", booking.getId(), resourceId);
+            
+            if (resourceId != null && !resourceId.trim().isEmpty()) {
+                try {
+                    Optional<com.smartcampus.backend.model.Resource> resource = resourceService.getResourceById(resourceId);
+                    if (resource.isPresent()) {
+                        String resourceName = resource.get().getName();
+                        logger.debug("Found resource name: {} for resourceId: {}", resourceName, resourceId);
+                        booking.setResourceName(resourceName);
+                    } else {
+                        logger.warn("Resource not found for resourceId: {} in booking {}", resourceId, booking.getId());
+                        booking.setResourceName("Resource - " + resourceId);
+                    }
+                } catch (Exception e) {
+                    logger.error("Error fetching resource for resourceId: {}", resourceId, e);
+                    booking.setResourceName("Resource - " + resourceId);
+                }
+            } else {
+                logger.warn("Booking {} has empty or null resourceId", booking.getId());
+                booking.setResourceName("Unnamed Resource");
+            }
+        }
+    }
+
+    /**
+     * Enrich a list of bookings with resource names if missing
+     */
+    private List<Booking> enrichBookingsWithResourceNames(List<Booking> bookings) {
+        bookings.forEach(this::enrichBookingWithResourceName);
+        return bookings;
     }
 }
