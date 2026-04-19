@@ -22,10 +22,9 @@ function TicketDetailPage() {
 
   return (
     <div>
-      <Link to={backLink} style={{ display: "inline-block", marginBottom: 16 }}>
-        Back to ticket list
+      <Link to={backLink} style={{ display: "inline-block", marginBottom: 16, textDecoration: "none", color: "#3b82f6", fontWeight: "600" }}>
+        ← Back
       </Link>
-      <h2 style={{ marginBottom: 16 }}>Ticket Detail</h2>
       <TicketDetail ticketId={id} />
     </div>
   );

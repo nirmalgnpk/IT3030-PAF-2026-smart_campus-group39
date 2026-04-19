@@ -1,16 +1,23 @@
 import React from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import Navbar from "../../components/Navbar/Navbar";
+import { useAuth } from "../../AuthContext";
 
 const styles = `
   .ticket-page {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 24px;
     min-height: 100vh;
-    background-color: #f5f7fa;
-    font-family: "Inter", "Segoe UI", sans-serif;
+    background-color: #F7F8FC;
+    font-family: inherit;
     box-sizing: border-box;
+  }
+
+  .ticket-page__content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
   }
 
   .ticket-page__tabs {
@@ -50,18 +57,8 @@ const styles = `
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   }
 
-  .ticket-page__panel-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: #1a202c;
-    margin: 0 0 16px 0;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #e2e8f0;
-    letter-spacing: -0.01em;
-  }
-
   @media (max-width: 768px) {
-    .ticket-page {
+    .ticket-page__content {
       padding: 16px;
     }
   }
@@ -69,33 +66,38 @@ const styles = `
 
 function TicketPage() {
   const location = useLocation();
+  const { currentUser } = useAuth();
   const basePath = location.pathname.startsWith('/admin') ? '/admin/tickets' : '/tickets';
 
   return (
     <>
       <style>{styles}</style>
       <div className="ticket-page">
-        <div className="ticket-page__tabs">
-          <NavLink
-            to={`${basePath}/list`}
-            className={({ isActive }) =>
-              `ticket-page__tab ${isActive ? "ticket-page__tab--active" : ""}`
-            }
-          >
-            Ticket List
-          </NavLink>
-          <NavLink
-            to={`${basePath}/new`}
-            className={({ isActive }) =>
-              `ticket-page__tab ${isActive ? "ticket-page__tab--active" : ""}`
-            }
-          >
-            New Ticket
-          </NavLink>
-        </div>
+        <Navbar />
 
-        <div className="ticket-page__panel">
-          <Outlet />
+        <div className="ticket-page__content">
+          <div className="ticket-page__tabs">
+            <NavLink
+              to={`${basePath}/list`}
+              className={({ isActive }) =>
+                `ticket-page__tab ${isActive ? "ticket-page__tab--active" : ""}`
+              }
+            >
+              Ticket List
+            </NavLink>
+            <NavLink
+              to={`${basePath}/new`}
+              className={({ isActive }) =>
+                `ticket-page__tab ${isActive ? "ticket-page__tab--active" : ""}`
+              }
+            >
+              New Ticket
+            </NavLink>
+          </div>
+
+          <div className="ticket-page__panel">
+            <Outlet />
+          </div>
         </div>
       </div>
     </>

@@ -2,32 +2,50 @@ import React, { useState } from "react";
 import { createTicket } from "../../services/ticketService";
 
 const styles = `
+  .ticket-form-wrapper {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .ticket-form-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+    margin-top: 0;
+    margin-bottom: 24px;
+  }
+
   .ticket-form {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 20px;
   }
 
   .ticket-form__row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 14px;
+    gap: 20px;
   }
 
   .ticket-form__field {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 6px;
   }
 
   .ticket-form__label {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
-    color: #4a5568;
+    color: #4b5563;
   }
 
   .ticket-form__label span {
-    color: #e53e3e;
+    color: #ef4444;
     margin-left: 2px;
   }
 
@@ -35,14 +53,14 @@ const styles = `
   .ticket-form__select,
   .ticket-form__textarea {
     width: 100%;
-    padding: 9px 12px;
+    padding: 12px 14px;
     font-size: 14px;
-    color: #1a202c;
+    color: #1f2937;
     background: #f9fafb;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
     outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    transition: all 0.2s ease;
     box-sizing: border-box;
     font-family: inherit;
   }
@@ -50,19 +68,19 @@ const styles = `
   .ticket-form__input:focus,
   .ticket-form__select:focus,
   .ticket-form__textarea:focus {
-    border-color: #667eea;
+    border-color: #6366f1;
     background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
   }
 
   .ticket-form__input::placeholder,
   .ticket-form__textarea::placeholder {
-    color: #a0aec0;
+    color: #9ca3af;
   }
 
   .ticket-form__textarea {
     resize: vertical;
-    min-height: 90px;
+    min-height: 100px;
     line-height: 1.5;
   }
 
@@ -75,9 +93,9 @@ const styles = `
     cursor: pointer;
   }
 
-  .ticket-form__priority-LOW    { color: #276749; background: #f0fff4; border-color: #9ae6b4; }
-  .ticket-form__priority-MEDIUM { color: #7b5e00; background: #fffbeb; border-color: #f6e05e; }
-  .ticket-form__priority-HIGH   { color: #9b2c2c; background: #fff5f5; border-color: #feb2b2; }
+  .ticket-form__priority-LOW    { color: #065f46; background: #ecfdf5; border-color: #a7f3d0; }
+  .ticket-form__priority-MEDIUM { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+  .ticket-form__priority-HIGH   { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
 
   .ticket-form__file-wrapper {
     display: flex;
@@ -88,32 +106,32 @@ const styles = `
   .ticket-form__file-drop {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    border: 1.5px dashed #cbd5e0;
+    gap: 12px;
+    padding: 16px;
+    border: 1px dashed #d1d5db;
     border-radius: 8px;
     background: #f9fafb;
     cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
+    transition: all 0.2s ease;
   }
 
   .ticket-form__file-drop:hover {
-    border-color: #667eea;
-    background: #eef2ff;
+    border-color: #6366f1;
+    background: #e0e7ff;
   }
 
   .ticket-form__file-icon {
-    font-size: 18px;
+    font-size: 20px;
     line-height: 1;
   }
 
   .ticket-form__file-text {
-    font-size: 13px;
-    color: #718096;
+    font-size: 14px;
+    color: #6b7280;
   }
 
   .ticket-form__file-text strong {
-    color: #667eea;
+    color: #6366f1;
     font-weight: 500;
   }
 
@@ -123,20 +141,21 @@ const styles = `
 
   .ticket-form__file-previews {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
+    margin-top: 10px;
   }
 
   .ticket-form__file-chip {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 10px;
-    background: #eef2ff;
-    border: 1px solid #c3dafe;
+    padding: 6px 12px;
+    background: #e0e7ff;
+    border: 1px solid #c7d2fe;
     border-radius: 20px;
-    font-size: 12px;
-    color: #434190;
+    font-size: 13px;
+    color: #3730a3;
   }
 
   .ticket-form__file-chip-remove {
@@ -144,58 +163,55 @@ const styles = `
     border: none;
     cursor: pointer;
     padding: 0;
-    font-size: 14px;
-    color: #7f9cf5;
+    font-size: 16px;
+    color: #818cf8;
     line-height: 1;
     display: flex;
     align-items: center;
   }
 
   .ticket-form__file-chip-remove:hover {
-    color: #e53e3e;
-  }
-
-  .ticket-form__divider {
-    height: 1px;
-    background: #e2e8f0;
-    margin: 2px 0;
+    color: #ef4444;
   }
 
   .ticket-form__submit {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 11px 20px;
-    background: #667eea;
+    width: 100%;
+    padding: 14px 20px;
+    background: #6366f1;
     color: #ffffff;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    transition: background 0.15s, transform 0.1s;
+    transition: all 0.2s ease;
     font-family: inherit;
-    letter-spacing: 0.01em;
+    margin-top: 10px;
   }
 
   .ticket-form__submit:hover {
-    background: #5a67d8;
+    background: #4f46e5;
   }
 
   .ticket-form__submit:active {
-    transform: scale(0.98);
+    transform: scale(0.99);
   }
 
   .ticket-form__submit:disabled {
-    background: #a0aec0;
+    background: #9ca3af;
     cursor: not-allowed;
     transform: none;
   }
 
-  @media (max-width: 560px) {
+  @media (max-width: 640px) {
     .ticket-form__row {
       grid-template-columns: 1fr;
+    }
+    .ticket-form-wrapper {
+      padding: 20px;
     }
   }
 `;
@@ -262,8 +278,9 @@ function TicketForm() {
   };
 
   return (
-    <>
+    <div className="ticket-form-wrapper">
       <style>{styles}</style>
+      <h2 className="ticket-form-title">Create Ticket</h2>
       <form className="ticket-form" onSubmit={handleSubmit}>
 
         {/* Row 1: Title + Category */}
@@ -397,7 +414,7 @@ function TicketForm() {
           {submitting ? "Submitting…" : "Create Ticket"}
         </button>
       </form>
-    </>
+    </div>
   );
 }
 

@@ -62,22 +62,31 @@ const styles = `
     margin-bottom: 8px;
   }
 
+  .ticket-list__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+
   .ticket-card {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 14px 16px;
+    justify-content: space-between;
+    padding: 20px;
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 10px;
+    border-radius: 12px;
     cursor: pointer;
-    transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    min-height: 140px;
   }
 
   .ticket-card:hover {
     border-color: #667eea;
-    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.1);
-    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.12);
+    transform: translateY(-2px);
   }
 
   .ticket-card:active {
@@ -86,13 +95,13 @@ const styles = `
 
   .ticket-card__header {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
   }
 
   .ticket-card__title {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
     color: #1a202c;
     margin: 0;
@@ -102,30 +111,37 @@ const styles = `
   .ticket-card__meta {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid #edf2f7;
   }
 
   .ticket-card__category {
-    font-size: 12px;
+    font-size: 13px;
     color: #718096;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    background: #f7fafc;
+    padding: 4px 10px;
+    border-radius: 20px;
   }
 
   .ticket-card__badges {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
     flex-shrink: 0;
   }
 
   .ticket-badge {
     display: inline-block;
-    padding: 3px 9px;
+    padding: 4px 10px;
     border-radius: 20px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.02em;
     white-space: nowrap;
@@ -249,33 +265,38 @@ function TicketList({ onSelectTicket }) {
           </div>
         )}
 
-        {/* Ticket cards */}
-        {tickets.map((ticket) => (
-          <div
-            key={ticket.id}
-            className="ticket-card"
-            onClick={() => {
-              if (onSelectTicket) {
-                onSelectTicket(ticket.id);
-                return;
-              }
-              // If we are currently under admin, navigate to admin route
-              if (window.location.pathname.startsWith('/admin')) {
-                navigate(`/admin/tickets/${ticket.id}`);
-              } else {
-                navigate(`/tickets/${ticket.id}`);
-              }
-            }}
-          >
-            <div className="ticket-card__header">
-              <h4 className="ticket-card__title">{ticket.title}</h4>
-              <div className="ticket-card__badges">
-                <span className={`ticket-badge ticket-badge--${ticket.priority}`}>
-                  {PRIORITY_LABELS[ticket.priority] ?? ticket.priority}
-                </span>
-                <span className={`ticket-badge ticket-badge--${ticket.status}`}>
-                  {STATUS_LABELS[ticket.status] ?? ticket.status}
-                </span>
+        {/* Ticket cards inline grid */}
+        <div className="ticket-list__grid">
+          {tickets.map((ticket) => (
+            <div
+              key={ticket.id}
+              className="ticket-card"
+              onClick={() => {
+                if (onSelectTicket) {
+                  onSelectTicket(ticket.id);
+                  return;
+                }
+                // If we are currently under admin, navigate to admin route
+                if (window.location.pathname.startsWith('/admin')) {
+                  navigate(`/admin/tickets/${ticket.id}`);
+                } else {
+                  navigate(`/tickets/${ticket.id}`);
+                }
+              }}
+            >
+              <div className="ticket-card__header">
+                <h4 className="ticket-card__title">{ticket.title}</h4>
+                <div className="ticket-card__badges">
+                  <span className={`ticket-badge ticket-badge--${ticket.priority}`}>
+                    {PRIORITY_LABELS[ticket.priority] ?? ticket.priority}
+                  </span>
+                  <span className={`ticket-badge ticket-badge--${ticket.status}`}>
+                    {STATUS_LABELS[ticket.status] ?? ticket.status}
+                  </span>
+                </div>
+              </div>
+              <div className="ticket-card__meta">
+                <span className="ticket-card__category">📁 {ticket.category}</span>
                 {(currentUser && (currentUser.role === "USER" || currentUser.role === "STUDENT" || ticket.createdBy === currentUser.name || ticket.createdBy === currentUser.userName || currentUser.role === "ADMIN")) && (
                   <button 
                     className="ticket-card__delete" 
@@ -287,11 +308,8 @@ function TicketList({ onSelectTicket }) {
                 )}
               </div>
             </div>
-            <div className="ticket-card__meta">
-              <span className="ticket-card__category">📁 {ticket.category}</span>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
 
       </div>
     </>
