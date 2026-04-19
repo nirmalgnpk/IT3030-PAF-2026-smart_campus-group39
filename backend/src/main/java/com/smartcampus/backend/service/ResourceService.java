@@ -59,11 +59,16 @@ public class ResourceService {
         return resourceRepository.save(resource);
     }
 
+    /**
+     * Delete a resource from the database (hard delete)
+     * @param id the resource ID
+     * @throws RuntimeException if resource is not found
+     */
     public void deleteResource(String id) {
         Resource resource = resourceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Resource not found"));
-        resource.setStatus("OUT_OF_SERVICE");
-        resourceRepository.save(resource);
+
+        resourceRepository.deleteById(id);
     }
 
     private Resource mapDTOToResource(ResourceDTO dto) {

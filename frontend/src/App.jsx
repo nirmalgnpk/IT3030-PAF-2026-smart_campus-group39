@@ -1,7 +1,7 @@
-import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from "./AuthContext";
-import ProtectedRoute   from "./ProtectedRoute";
+import ProtectedRoute from "./ProtectedRoute";
 
 import Login            from "./pages/Login/Login";
 import ForgotPassword   from "./pages/Login/ForgotPassword";
@@ -12,9 +12,9 @@ import Register         from "./pages/Register/Register";
 // ✅ Import new pages
 import AdminDashboard   from "./pages/Admin/AdminDashboard";
 import Profile          from "./pages/Profile/Profile";
+import FacilitiesPage   from './pages/facilities/FacilitiesPage';
 
 // Lazy placeholders — replace with your real page components
-const FacilitiesPage= () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Facilities</h2></div>;
 const ResourceDetail= () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Resource Detail</h2></div>;
 const Bookings      = () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Bookings</h2></div>;
 const Tickets       = () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Tickets</h2></div>;
@@ -33,54 +33,53 @@ function App() {
                 button:hover { opacity: 0.92; }
                 a:hover { opacity: 0.85; }
             `}</style>
+            <BrowserRouter>
+              <AuthProvider>
+                <Routes>
+                  {/* Public */}
+                  <Route path="/"                element={<Home />} />
+                  <Route path="/login"           element={<Login />} />
+                  <Route path="/register"        element={<Register />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/oauth-callback"  element={<OAuth2Callback />} />
 
-            <AuthProvider>
-                <Router>
-                    <Routes>
-                        {/* Public */}
-                        <Route path="/"                element={<Home />} />
-                        <Route path="/login"           element={<Login />} />
-                        <Route path="/register"        element={<Register />} />
-                        <Route path="/forgot-password" element={<ForgotPassword />} />
-                        <Route path="/oauth-callback"  element={<OAuth2Callback />} />
+                  {/* Protected — any logged-in user */}
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute><Home /></ProtectedRoute>
+                  } />
+                  <Route path="/facilities" element={
+                    <ProtectedRoute><FacilitiesPage /></ProtectedRoute>
+                  } />
+                  <Route path="/facilities/:id" element={
+                    <ProtectedRoute><ResourceDetail /></ProtectedRoute>
+                  } />
+                  <Route path="/bookings" element={
+                    <ProtectedRoute><Bookings /></ProtectedRoute>
+                  } />
+                  <Route path="/tickets" element={
+                    <ProtectedRoute><Tickets /></ProtectedRoute>
+                  } />
+                  <Route path="/notifications" element={
+                    <ProtectedRoute><Notifications /></ProtectedRoute>
+                  } />
 
-                        {/* Protected — any logged-in user */}
-                        <Route path="/dashboard" element={
-                            <ProtectedRoute><Home /></ProtectedRoute>
-                        } />
-                        <Route path="/facilities" element={
-                            <ProtectedRoute><FacilitiesPage /></ProtectedRoute>
-                        } />
-                        <Route path="/facilities/:id" element={
-                            <ProtectedRoute><ResourceDetail /></ProtectedRoute>
-                        } />
-                        <Route path="/bookings" element={
-                            <ProtectedRoute><Bookings /></ProtectedRoute>
-                        } />
-                        <Route path="/tickets" element={
-                            <ProtectedRoute><Tickets /></ProtectedRoute>
-                        } />
-                        <Route path="/notifications" element={
-                            <ProtectedRoute><Notifications /></ProtectedRoute>
-                        } />
+                  {/* ✅ Profile page */}
+                  <Route path="/profile" element={
+                    <ProtectedRoute><Profile /></ProtectedRoute>
+                  } />
 
-                        {/* ✅ Profile page */}
-                        <Route path="/profile" element={
-                            <ProtectedRoute><Profile /></ProtectedRoute>
-                        } />
+                  {/* ✅ Admin only */}
+                  <Route path="/admin/dashboard" element={
+                    <ProtectedRoute roles={["ADMIN"]}><AdminDashboard /></ProtectedRoute>
+                  } />
 
-                        {/* ✅ Admin only */}
-                        <Route path="/admin/dashboard" element={
-                            <ProtectedRoute roles={["ADMIN"]}><AdminDashboard /></ProtectedRoute>
-                        } />
-
-                        {/* Technician + Admin */}
-                        <Route path="/admin/tickets" element={
-                            <ProtectedRoute roles={["TECHNICIAN", "ADMIN"]}><Tickets /></ProtectedRoute>
-                        } />
-                    </Routes>
-                </Router>
-            </AuthProvider>
+                  {/* Technician + Admin */}
+                  <Route path="/admin/tickets" element={
+                    <ProtectedRoute roles={["TECHNICIAN", "ADMIN"]}><Tickets /></ProtectedRoute>
+                  } />
+                </Routes>
+              </AuthProvider>
+            </BrowserRouter>
         </>
     );
 }

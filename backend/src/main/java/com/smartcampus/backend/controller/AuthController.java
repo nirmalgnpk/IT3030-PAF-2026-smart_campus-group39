@@ -33,7 +33,7 @@ public class AuthController {
     @Autowired private JwtService      jwtService;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private OtpService      otpService;
-    @Autowired private EmailService    emailService;
+    @Autowired(required = false) private EmailService    emailService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;

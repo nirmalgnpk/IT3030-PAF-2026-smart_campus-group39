@@ -1,5 +1,5 @@
 // src/main/java/com/smartcampus/auth/model/PendingRegistration.java
-package com.smartcampus.auth.model;
+package com.smartcampus.backend.model;
 
 public class PendingRegistration {
     private String name;
