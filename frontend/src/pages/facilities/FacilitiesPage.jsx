@@ -5,7 +5,7 @@ import Navbar from "../../components/Navbar/Navbar";
 import { useAuth } from "../../AuthContext";
 
 const FacilitiesPage = () => {
-  // Get current user from auth hook
+  // Get current  user from auth hook
   const { currentUser } = useAuth();
   
   // Compute isAdmin from user's role
