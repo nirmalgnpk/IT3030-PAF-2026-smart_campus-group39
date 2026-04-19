@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from "./AuthContext";
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -10,17 +10,20 @@ import ForgotPassword from "./pages/Login/ForgotPassword";
 import OAuth2Callback from "./pages/Login/Oauth2callback";
 
 import FacilitiesPage from "./pages/facilities/FacilitiesPage";
-import ResourceDetail from "./pages/facilities/ResourceDetail";
 
 // ✅ Import new pages
 import AdminDashboard   from "./pages/Admin/AdminDashboard";
 import Profile          from "./pages/Profile/Profile";
+import TicketPage from "./pages/tickets/TicketPage";
+import TicketListPage from "./pages/tickets/TicketListPage";
+import TicketCreatePage from "./pages/tickets/TicketCreatePage";
+import TicketDetailPage from "./pages/tickets/TicketDetailPage";
+import AdminTicketList from "./pages/Admin/AdminTicketList";
+import AdminTicketDetail from "./pages/Admin/AdminTicketDetail";
 
 // Lazy placeholders — replace with your real page components
-const FacilitiesPage= () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Facilities</h2></div>;
 const ResourceDetail= () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Resource Detail</h2></div>;
 const Bookings      = () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Bookings</h2></div>;
-const Tickets       = () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Tickets</h2></div>;
 const Notifications = () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Notifications</h2></div>;
 
 function App() {
@@ -61,8 +64,13 @@ function App() {
                             <ProtectedRoute><Bookings /></ProtectedRoute>
                         } />
                         <Route path="/tickets" element={
-                            <ProtectedRoute><Tickets /></ProtectedRoute>
-                        } />
+                            <ProtectedRoute><TicketPage /></ProtectedRoute>
+                        }>
+                            <Route index element={<Navigate to="list" replace />} />
+                            <Route path="list" element={<TicketListPage />} />
+                            <Route path="new" element={<TicketCreatePage />} />
+                            <Route path=":id" element={<TicketDetailPage />} />
+                        </Route>
                         <Route path="/notifications" element={
                             <ProtectedRoute><Notifications /></ProtectedRoute>
                         } />
@@ -79,8 +87,12 @@ function App() {
 
                         {/* Technician + Admin */}
                         <Route path="/admin/tickets" element={
-                            <ProtectedRoute roles={["TECHNICIAN", "ADMIN"]}><Tickets /></ProtectedRoute>
-                        } />
+                            <ProtectedRoute roles={["TECHNICIAN", "ADMIN"]}><TicketPage /></ProtectedRoute>
+                        }>
+                            <Route index element={<Navigate to="list" replace />} />
+                            <Route path="list" element={<AdminTicketList />} />
+                            <Route path=":id" element={<AdminTicketDetail />} />
+                        </Route>
                     </Routes>
                 </Router>
             </AuthProvider>
