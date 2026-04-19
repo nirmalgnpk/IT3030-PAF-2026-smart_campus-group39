@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { getAllTickets } from "../../services/ticketService";
+import { getAllTickets, getAssignedTickets, deleteTicket } from "../../services/ticketService";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../AuthContext";
 
 const styles = `
   .ticket-list {
@@ -142,6 +143,24 @@ const styles = `
   .ticket-badge--LOW    { background: #f0fff4; color: #276749; border-color: #9ae6b4; }
   .ticket-badge--MEDIUM { background: #fffbeb; color: #7b5e00; border-color: #f6e05e; }
   .ticket-badge--HIGH   { background: #fff5f5; color: #9b2c2c; border-color: #feb2b2; }
+
+  .ticket-card__delete {
+    background: none;
+    border: none;
+    color: #e53e3e;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+  }
+  
+  .ticket-card__delete:hover {
+    background-color: #fff5f5;
+  }
 `;
 
 const STATUS_LABELS = {
@@ -160,12 +179,40 @@ const PRIORITY_LABELS = {
 
 function TicketList({ onSelectTicket }) {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
 
   const loadTickets = async () => {
-    const res = await getAllTickets(statusFilter || null);
-    setTickets(res.data);
+    let res;
+    if (currentUser?.role === "TECHNICIAN") {
+      const username = currentUser?.name || currentUser?.userName;
+      if (!username) {
+        setTickets([]);
+        return;
+      }
+      res = await getAssignedTickets(username);
+      let tdata = res.data;
+      if (statusFilter) {
+        tdata = tdata.filter(t => t.status === statusFilter);
+      }
+      setTickets(tdata);
+    } else {
+      res = await getAllTickets(statusFilter || null);
+      setTickets(res.data);
+    }
+  };
+
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this ticket?")) {
+      try {
+        await deleteTicket(id);
+        setTickets((prev) => prev.filter((ticket) => ticket.id !== id));
+      } catch (error) {
+        console.error("Error deleting ticket:", error);
+      }
+    }
   };
 
   useEffect(() => {
@@ -212,7 +259,12 @@ function TicketList({ onSelectTicket }) {
                 onSelectTicket(ticket.id);
                 return;
               }
-              navigate(`/tickets/${ticket.id}`);
+              // If we are currently under admin, navigate to admin route
+              if (window.location.pathname.startsWith('/admin')) {
+                navigate(`/admin/tickets/${ticket.id}`);
+              } else {
+                navigate(`/tickets/${ticket.id}`);
+              }
             }}
           >
             <div className="ticket-card__header">
@@ -224,6 +276,15 @@ function TicketList({ onSelectTicket }) {
                 <span className={`ticket-badge ticket-badge--${ticket.status}`}>
                   {STATUS_LABELS[ticket.status] ?? ticket.status}
                 </span>
+                {(currentUser && (currentUser.role === "USER" || currentUser.role === "STUDENT" || ticket.createdBy === currentUser.name || ticket.createdBy === currentUser.userName || currentUser.role === "ADMIN")) && (
+                  <button 
+                    className="ticket-card__delete" 
+                    onClick={(e) => handleDelete(e, ticket.id)}
+                    title="Delete Ticket"
+                  >
+                    🗑️
+                  </button>
+                )}
               </div>
             </div>
             <div className="ticket-card__meta">

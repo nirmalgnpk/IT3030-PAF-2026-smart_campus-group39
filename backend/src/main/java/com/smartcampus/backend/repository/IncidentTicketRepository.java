@@ -12,4 +12,6 @@ public interface IncidentTicketRepository extends MongoRepository<IncidentTicket
     List<IncidentTicket> findByStatus(TicketStatus status);
 
     List<IncidentTicket> findByPriority(TicketPriority priority);
+
+    List<IncidentTicket> findByAssignedTechnician(String assignedTechnician);
 }

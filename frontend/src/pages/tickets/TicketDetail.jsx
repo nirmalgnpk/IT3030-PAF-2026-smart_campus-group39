@@ -5,6 +5,7 @@ import {
   updateTicketStatus,
   addTechnicianUpdate,
 } from "../../services/ticketService";
+import { useAuth } from "../../AuthContext";
 
 function TicketDetail({ ticketId }) {
   const [ticket, setTicket] = useState(null);
@@ -13,6 +14,11 @@ function TicketDetail({ ticketId }) {
   const [resolutionNote, setResolutionNote] = useState("");
   const [updateMsg, setUpdateMsg] = useState("");
   const [updatedBy, setUpdatedBy] = useState("");
+  const { currentUser } = useAuth();
+
+  const isAdmin = currentUser?.role === "ADMIN";
+  const isTechnician = currentUser?.role === "TECHNICIAN";
+  const isAdminOrTech = isAdmin || isTechnician;
 
   const loadTicket = async () => {
     const res = await getTicketById(ticketId);
@@ -56,30 +62,38 @@ function TicketDetail({ ticketId }) {
       {ticket.attachments?.map((att) => (
         <img
           key={att.id}
-          src={`http://localhost:8080/${att.filePath.replace("\\", "/")}`}
+          src={`http://localhost:8081/${att.filePath.replace("\\", "/")}`}
           alt={att.fileName}
           width="150"
         />
       ))}
 
-      <h3>Assign Technician</h3>
-      <input value={techName} onChange={(e) => setTechName(e.target.value)} placeholder="Technician name" />
-      <button onClick={handleAssign}>Assign</button>
+      {isAdmin && (
+        <>
+          <h3>Assign Technician</h3>
+          <input value={techName} onChange={(e) => setTechName(e.target.value)} placeholder="Technician name" />
+          <button onClick={handleAssign}>Assign</button>
+        </>
+      )}
 
-      <h3>Update Status</h3>
-      <select value={status} onChange={(e) => setStatus(e.target.value)}>
-        <option value="OPEN">OPEN</option>
-        <option value="IN_PROGRESS">IN_PROGRESS</option>
-        <option value="RESOLVED">RESOLVED</option>
-        <option value="CLOSED">CLOSED</option>
-        <option value="REJECTED">REJECTED</option>
-      </select>
-      <textarea
-        placeholder="Resolution Note"
-        value={resolutionNote}
-        onChange={(e) => setResolutionNote(e.target.value)}
-      />
-      <button onClick={handleStatusUpdate}>Update Status</button>
+      {isTechnician && (
+        <>
+          <h3>Update Status</h3>
+          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="OPEN">OPEN</option>
+            <option value="IN_PROGRESS">IN_PROGRESS</option>
+            <option value="RESOLVED">RESOLVED</option>
+            <option value="CLOSED">CLOSED</option>
+            <option value="REJECTED">REJECTED</option>
+          </select>
+          <textarea
+            placeholder="Resolution Note"
+            value={resolutionNote}
+            onChange={(e) => setResolutionNote(e.target.value)}
+          />
+          <button onClick={handleStatusUpdate}>Update Status</button>
+        </>
+      )}
 
       <h3>Technician Updates</h3>
       {ticket.updates?.map((u) => (
@@ -88,9 +102,13 @@ function TicketDetail({ ticketId }) {
         </div>
       ))}
 
-      <input value={updatedBy} onChange={(e) => setUpdatedBy(e.target.value)} placeholder="Updated By" />
-      <textarea value={updateMsg} onChange={(e) => setUpdateMsg(e.target.value)} placeholder="Update message" />
-      <button onClick={handleAddUpdate}>Add Update</button>
+      {isAdminOrTech && (
+        <>
+          <input value={updatedBy} onChange={(e) => setUpdatedBy(e.target.value)} placeholder="Updated By" />
+          <textarea value={updateMsg} onChange={(e) => setUpdateMsg(e.target.value)} placeholder="Update message" />
+          <button onClick={handleAddUpdate}>Add Update</button>
+        </>
+      )}
     </div>
   );
 }

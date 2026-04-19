@@ -20,6 +20,9 @@ import TicketDetailPage from "./pages/tickets/TicketDetailPage";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import Profile from "./pages/Profile/Profile";
 
+import AdminTicketList from "./pages/Admin/AdminTicketList";
+import AdminTicketDetail from "./pages/Admin/AdminTicketDetail";
+
 function App() {
     return (
         <>
@@ -93,26 +96,20 @@ function App() {
                         />
 
                         <Route
-                            path="/admin/dashboard"
+                            path="/admin"
                             element={
-                                <ProtectedRoute roles={["ADMIN"]}>
+                                <ProtectedRoute roles={["ADMIN", "TECHNICIAN"]}>
                                     <AdminDashboard />
                                 </ProtectedRoute>
                             }
-                        />
-
-                        <Route
-                            path="/admin/tickets"
-                            element={
-                                <ProtectedRoute roles={["TECHNICIAN", "ADMIN"]}>
-                                    <TicketPage />
-                                </ProtectedRoute>
-                            }
                         >
-                            <Route index element={<TicketListPage />} />
-                            <Route path="list" element={<TicketListPage />} />
-                            <Route path="new" element={<TicketCreatePage />} />
-                            <Route path=":id" element={<TicketDetailPage />} />
+                            <Route path="dashboard" element={<div style={{ display: 'none' }}/>} />
+                            
+                            <Route path="tickets">
+                                <Route index element={<AdminTicketList />} />
+                                <Route path="list" element={<AdminTicketList />} />
+                                <Route path=":id" element={<AdminTicketDetail />} />
+                            </Route>
                         </Route>
                     </Routes>
                 </Router>

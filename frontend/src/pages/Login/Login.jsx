@@ -114,7 +114,7 @@ export default function Login() {
         if (Object.keys(e).length) return;
         setLoading(true);
         try {
-            const { data } = await axios.post("http://localhost:8080/api/auth/login", {
+            const { data } = await axios.post("http://localhost:8081/api/auth/login", {
                 email: email.trim().toLowerCase(),
                 password,
             });
@@ -281,7 +281,7 @@ export default function Login() {
                         <button
                             type="button"
                             style={css.googleBtn}
-                            onClick={() => window.location.href = "http://localhost:8080/oauth2/authorization/google"}
+                            onClick={() => window.location.href = "http://localhost:8081/oauth2/authorization/google"}
                         >
                             <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
                                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

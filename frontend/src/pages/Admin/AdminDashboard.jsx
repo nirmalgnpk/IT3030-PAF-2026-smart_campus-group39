@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
 import api from "../../api";
 import {
@@ -81,6 +81,8 @@ const PIE_COLORS = ["#3b82f6", "#22c55e", "#a855f7", "#f59e0b", "#ef4444"];
 export default function AdminDashboard() {
     const { currentUser, logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const isTicketsPath = location.pathname.startsWith('/admin/tickets');
 
     const [users,        setUsers]        = useState([]);
     const [stats,        setStats]        = useState(null);
@@ -108,13 +110,23 @@ export default function AdminDashboard() {
     const [broadcastMode, setBroadcastMode] = useState(false);
 
     useEffect(() => {
-        if (currentUser && currentUser.role !== "ADMIN") { navigate("/"); return; }
-        fetchUsers();
-        fetchStats();
+        if (!currentUser) return;
+        if (currentUser.role === "TECHNICIAN" && !isTicketsPath) {
+             navigate("/admin/tickets/list"); 
+             return;
+        }
+        if (currentUser.role !== "ADMIN" && currentUser.role !== "TECHNICIAN") { 
+             navigate("/"); 
+             return; 
+        }
+        if (currentUser.role === "ADMIN") {
+            fetchUsers();
+            fetchStats();
+        }
         fetchAdminUnread();
         const iv = setInterval(fetchAdminUnread, 30000);
         return () => clearInterval(iv);
-    }, []);
+    }, [currentUser, isTicketsPath, navigate]);
 
     useEffect(() => {
         const handler = e => {
@@ -309,15 +321,22 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                     <nav style={{ marginTop: "2rem" }}>
-                        {[
+                        {currentUser?.role === "ADMIN" && [
                             { id: "users",    icon: <FiUsers size={15} />,     label: "Users"    },
                             { id: "overview", icon: <FiBarChart2 size={15} />, label: "Overview" },
                         ].map(item => (
-                            <button key={item.id} onClick={() => setActiveTab(item.id)}
-                                    style={{ ...S.navItem, ...(activeTab === item.id ? S.navItemActive : {}) }}>
+                            <button key={item.id} onClick={() => { navigate("/admin/dashboard"); setActiveTab(item.id); }}
+                                    style={{ ...S.navItem, ...(!isTicketsPath && activeTab === item.id ? S.navItemActive : {}) }}>
                                 {item.icon}<span>{item.label}</span>
                             </button>
                         ))}
+                        
+                        {(currentUser?.role === "ADMIN" || currentUser?.role === "TECHNICIAN") && (
+                            <button onClick={() => navigate("/admin/tickets/list")} 
+                                    style={{ ...S.navItem, ...(isTicketsPath ? S.navItemActive : {}) }}>
+                                <FiAlertCircle size={15} /><span>Tickets</span>
+                            </button>
+                        )}
                         <div style={{ borderTop: "1px solid #1e293b", margin: "1rem 0" }} />
                         <Link to="/" style={{ ...S.navItem, textDecoration: "none", display: "flex", gap: 10 }}>
                             <FiHome size={15} /><span>Main App</span>
@@ -343,12 +362,16 @@ export default function AdminDashboard() {
                 {/* Header */}
                 <header style={S.header}>
                     <div>
-                        <h1 style={S.pageTitle}>{activeTab === "users" ? "User Management" : "Platform Overview"}</h1>
-                        <p style={S.pageSubtitle}>
-                            {activeTab === "users"
-                                ? `${filtered.length} of ${users.length} users`
-                                : `${localStats.total} total users · ${localStats.active} active`}
-                        </p>
+                        <h1 style={S.pageTitle}>
+                            {isTicketsPath ? "Ticket Management" : (activeTab === "users" ? "User Management" : "Platform Overview")}
+                        </h1>
+                        {!isTicketsPath && (
+                            <p style={S.pageSubtitle}>
+                                {activeTab === "users"
+                                    ? `${filtered.length} of ${users.length} users`
+                                    : `${localStats.total} total users · ${localStats.active} active`}
+                            </p>
+                        )}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <button onClick={() => setSendPanel(true)} style={S.actionHeaderBtn}>
@@ -399,6 +422,10 @@ export default function AdminDashboard() {
                     </div>
                 </header>
 
+                {isTicketsPath ? (
+                    <Outlet />
+                ) : (
+                    <>
                 {/* Stats Cards — always visible */}
                 <div style={S.statsGrid}>
                     {[
@@ -419,7 +446,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* ── USERS TAB ── */}
-                {activeTab === "users" && (
+                {activeTab === "users" && currentUser?.role === "ADMIN" && (
                     <>
                         <div style={S.filterBar}>
                             <div style={S.searchWrap}>
@@ -596,6 +623,8 @@ export default function AdminDashboard() {
                             </>
                         )}
                     </div>
+                )}
+                </>
                 )}
             </main>
 

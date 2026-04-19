@@ -20,7 +20,7 @@ button:hover:not(:disabled) { opacity: 0.88; }
 `;
 
 const SLIIT_DOMAIN = "@my.sliit.lk";
-const API = "http://localhost:8080/api/auth";
+const API = "http://localhost:8081/api/auth";
 
 function validateEmail(email) {
     const lower = email.trim().toLowerCase();

@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 const styles = `
   .ticket-page {
@@ -68,13 +68,16 @@ const styles = `
 `;
 
 function TicketPage() {
+  const location = useLocation();
+  const basePath = location.pathname.startsWith('/admin') ? '/admin/tickets' : '/tickets';
+
   return (
     <>
       <style>{styles}</style>
       <div className="ticket-page">
         <div className="ticket-page__tabs">
           <NavLink
-            to="/tickets/list"
+            to={`${basePath}/list`}
             className={({ isActive }) =>
               `ticket-page__tab ${isActive ? "ticket-page__tab--active" : ""}`
             }
@@ -82,7 +85,7 @@ function TicketPage() {
             Ticket List
           </NavLink>
           <NavLink
-            to="/tickets/new"
+            to={`${basePath}/new`}
             className={({ isActive }) =>
               `ticket-page__tab ${isActive ? "ticket-page__tab--active" : ""}`
             }
