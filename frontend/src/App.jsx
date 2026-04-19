@@ -1,5 +1,5 @@
-import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from "./AuthContext";
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -12,16 +12,16 @@ import OAuth2Callback from "./pages/Login/Oauth2callback";
 import FacilitiesPage from "./pages/facilities/FacilitiesPage";
 import ResourceDetail from "./pages/facilities/ResourceDetail";
 
-import TicketPage from "./pages/tickets/TicketPage";
-import TicketListPage from "./pages/tickets/TicketListPage";
-import TicketCreatePage from "./pages/tickets/TicketCreatePage";
-import TicketDetailPage from "./pages/tickets/TicketDetailPage";
+// ✅ Import new pages
+import AdminDashboard   from "./pages/Admin/AdminDashboard";
+import Profile          from "./pages/Profile/Profile";
 
-import AdminDashboard from "./pages/Admin/AdminDashboard";
-import Profile from "./pages/Profile/Profile";
-
-import AdminTicketList from "./pages/Admin/AdminTicketList";
-import AdminTicketDetail from "./pages/Admin/AdminTicketDetail";
+// Lazy placeholders — replace with your real page components
+const FacilitiesPage= () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Facilities</h2></div>;
+const ResourceDetail= () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Resource Detail</h2></div>;
+const Bookings      = () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Bookings</h2></div>;
+const Tickets       = () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Tickets</h2></div>;
+const Notifications = () => <div style={{ padding: "2rem", fontFamily: "inherit" }}><h2>Notifications</h2></div>;
 
 function App() {
     return (
@@ -40,77 +40,47 @@ function App() {
             <AuthProvider>
                 <Router>
                     <Routes>
-                        <Route path="/" element={<Home />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
+                        {/* Public */}
+                        <Route path="/"                element={<Home />} />
+                        <Route path="/login"           element={<Login />} />
+                        <Route path="/register"        element={<Register />} />
                         <Route path="/forgot-password" element={<ForgotPassword />} />
-                        <Route path="/oauth-callback" element={<OAuth2Callback />} />
+                        <Route path="/oauth-callback"  element={<OAuth2Callback />} />
 
-                        <Route
-                            path="/dashboard"
-                            element={
-                                <ProtectedRoute>
-                                    <Home />
-                                </ProtectedRoute>
-                            }
-                        />
+                        {/* Protected — any logged-in user */}
+                        <Route path="/dashboard" element={
+                            <ProtectedRoute><Home /></ProtectedRoute>
+                        } />
+                        <Route path="/facilities" element={
+                            <ProtectedRoute><FacilitiesPage /></ProtectedRoute>
+                        } />
+                        <Route path="/facilities/:id" element={
+                            <ProtectedRoute><ResourceDetail /></ProtectedRoute>
+                        } />
+                        <Route path="/bookings" element={
+                            <ProtectedRoute><Bookings /></ProtectedRoute>
+                        } />
+                        <Route path="/tickets" element={
+                            <ProtectedRoute><Tickets /></ProtectedRoute>
+                        } />
+                        <Route path="/notifications" element={
+                            <ProtectedRoute><Notifications /></ProtectedRoute>
+                        } />
 
-                        <Route
-                            path="/facilities"
-                            element={
-                                <ProtectedRoute>
-                                    <FacilitiesPage />
-                                </ProtectedRoute>
-                            }
-                        />
-                        <Route
-                            path="/facilities/:id"
-                            element={
-                                <ProtectedRoute>
-                                    <ResourceDetail />
-                                </ProtectedRoute>
-                            }
-                        />
+                        {/* ✅ Profile page */}
+                        <Route path="/profile" element={
+                            <ProtectedRoute><Profile /></ProtectedRoute>
+                        } />
 
-                        <Route
-                            path="/tickets"
-                            element={
-                                <ProtectedRoute>
-                                    <TicketPage />
-                                </ProtectedRoute>
-                            }
-                        >
-                            <Route index element={<TicketListPage />} />
-                            <Route path="list" element={<TicketListPage />} />
-                            <Route path="new" element={<TicketCreatePage />} />
-                            <Route path=":id" element={<TicketDetailPage />} />
-                        </Route>
+                        {/* ✅ Admin only */}
+                        <Route path="/admin/dashboard" element={
+                            <ProtectedRoute roles={["ADMIN"]}><AdminDashboard /></ProtectedRoute>
+                        } />
 
-                        <Route
-                            path="/profile"
-                            element={
-                                <ProtectedRoute>
-                                    <Profile />
-                                </ProtectedRoute>
-                            }
-                        />
-
-                        <Route
-                            path="/admin"
-                            element={
-                                <ProtectedRoute roles={["ADMIN", "TECHNICIAN"]}>
-                                    <AdminDashboard />
-                                </ProtectedRoute>
-                            }
-                        >
-                            <Route path="dashboard" element={<div style={{ display: 'none' }}/>} />
-                            
-                            <Route path="tickets">
-                                <Route index element={<AdminTicketList />} />
-                                <Route path="list" element={<AdminTicketList />} />
-                                <Route path=":id" element={<AdminTicketDetail />} />
-                            </Route>
-                        </Route>
+                        {/* Technician + Admin */}
+                        <Route path="/admin/tickets" element={
+                            <ProtectedRoute roles={["TECHNICIAN", "ADMIN"]}><Tickets /></ProtectedRoute>
+                        } />
                     </Routes>
                 </Router>
             </AuthProvider>

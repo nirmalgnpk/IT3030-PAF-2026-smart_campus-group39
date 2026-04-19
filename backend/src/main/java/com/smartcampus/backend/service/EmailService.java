@@ -12,9 +12,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class EmailService {
 
-        private final JavaMailSender mailSender;
+    @Autowired(required = false)
+    private JavaMailSender mailSender;
 
-        @Value("${spring.mail.username:no-reply@smartcampus.local}")
+    @Value("${spring.mail.username:noreply@smartcampus.edu}")
     private String fromEmail;
 
         @Autowired

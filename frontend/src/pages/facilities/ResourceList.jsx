@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import ResourceCard from './ResourceCard';
 import ResourceFilter from './ResourceFilter';
 import ResourceForm from './ResourceForm';
+import ResourceDetailModal from './ResourceDetailModal';
 import { getAllResources, deleteResource } from '../../services/resourceService';
+import { useAuth } from '../../AuthContext';
 
 /**
  * ResourceList Component — Full Facilities Management Page
@@ -32,14 +34,21 @@ const Spinner = ({ size = 24, color = '#0B1F3A' }) => (
   </svg>
 );
 
-const ResourceList = ({ isAdmin = true }) => {
+const ResourceList = () => {
   const navigate = useNavigate();
+  
+  // Get current user from auth hook
+  const { currentUser } = useAuth();
+  
+  // Compute isAdmin from user's role
+  const isAdmin = currentUser?.role === 'ADMIN';
 
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [selectedResource, setSelectedResource] = useState(null);
+  const [selectedDetailResourceId, setSelectedDetailResourceId] = useState(null);
   const [filters, setFilters] = useState({
     type: '',
     status: '',
@@ -203,10 +212,15 @@ const ResourceList = ({ isAdmin = true }) => {
                 <div key={resource.id} style={{ position: 'relative' }}>
                   <ResourceCard
                     resource={resource}
-                    onViewDetails={(resourceId) => navigate(`/facilities/${resourceId}`)}
+                    onViewDetails={(resourceId) => setSelectedDetailResourceId(resourceId)}
                     onEdit={(resourceId) => {
                       setSelectedResource(resource);
                       setShowForm(true);
+                    }}
+                    onDelete={(resourceId) => {
+                      if (window.confirm('Are you sure you want to delete this resource?')) {
+                        handleDelete(resourceId);
+                      }
                     }}
                     isAdmin={isAdmin}
                   />
@@ -342,6 +356,15 @@ const ResourceList = ({ isAdmin = true }) => {
             />
           </div>
         </div>
+      )}
+
+      {/* ── Detail View Modal ── */}
+      {selectedDetailResourceId && (
+        <ResourceDetailModal
+          resourceId={selectedDetailResourceId}
+          onClose={() => setSelectedDetailResourceId(null)}
+          isAdmin={isAdmin}
+        />
       )}
     </div>
   );

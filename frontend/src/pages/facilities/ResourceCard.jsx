@@ -6,7 +6,8 @@ import React from 'react';
  * @param {object}   resource          - Resource object
  * @param {function} onViewDetails     - Callback when "View Details" is clicked
  * @param {function} onEdit            - Callback when "Edit" is clicked
- * @param {boolean}  isAdmin           - Show edit button for admins
+ * @param {function} onDelete          - Callback when "Delete" is clicked
+ * @param {boolean}  isAdmin           - Show edit and delete buttons for admins
  */
 
 /* ─── Accent bar gradients per type ─── */
@@ -65,6 +66,45 @@ const IconClock = () => (
   </svg>
 );
 
+const IconTrash = () => (
+  <svg style={{ width: '16px', height: '16px' }} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+    <line x1="10" y1="11" x2="10" y2="17"/>
+    <line x1="14" y1="11" x2="14" y2="17"/>
+  </svg>
+);
+
+/* ─── Animation Keyframes ─── */
+const trashAnimationStyle = `
+  @keyframes trashMotion {
+    0% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.15) rotate(-5deg); }
+    100% { transform: scale(1.15) rotate(5deg); }
+  }
+  @keyframes trashClickPulse {
+    0% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(0.9) rotate(-8deg); }
+    50% { transform: scale(1.2) rotate(8deg); }
+    100% { transform: scale(1.15) rotate(0deg); }
+  }
+  .trash-button-hover {
+    animation: trashMotion 0.6s ease-in-out infinite;
+  }
+  .trash-button-click {
+    animation: trashClickPulse 0.4s ease-out;
+  }
+`;
+
+// Inject stylesheet
+if (typeof document !== 'undefined' && !document.getElementById('trash-animation-styles')) {
+  const style = document.createElement('style');
+  style.id = 'trash-animation-styles';
+  style.innerHTML = trashAnimationStyle;
+  document.head.appendChild(style);
+}
+
 /* ─── MetaRow ─── */
 const MetaRow = ({ icon, label, children }) => (
   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.625rem' }}>
@@ -81,13 +121,47 @@ const MetaRow = ({ icon, label, children }) => (
 );
 
 /* ─── ResourceCard ─── */
-const ResourceCard = ({ resource, onViewDetails, onEdit, isAdmin = false }) => {
+const ResourceCard = ({ resource, onViewDetails, onEdit, onDelete, isAdmin = false }) => {
+  // eslint-disable-next-line no-unused-vars
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const deleteIconRef = React.useRef(null);
+
   const accentGradient = TYPE_GRADIENT[resource.type] ?? 'linear-gradient(to right, #999, #aaa)';
   const typeBadgeStyle = TYPE_BADGE[resource.type]  ?? { backgroundColor: '#f3f4f6', color: '#6b7280' };
   const typeLabel      = TYPE_LABEL[resource.type]  ?? resource.type.replace(/_/g, ' ');
   const statusCfg      = STATUS_CONFIG[resource.status] ?? {
     style: { backgroundColor: '#f3f4f6', color: '#6b7280' }, dot: '#9ca3af',
     label: resource.status.replace(/_/g, ' '),
+  };
+
+  const handleDeleteClick = () => {
+    if (deleteIconRef.current) {
+      setIsDeleting(true);
+      setTimeout(() => setIsDeleting(false), 400);
+    }
+    onDelete?.(resource.id);
+  };
+
+  // Format availability to a concise display
+  const getAvailabilityDisplay = () => {
+    if (!resource.availabilityWindows) return 'Not specified';
+    
+    // Parse the availability string to get days and time
+    const entries = resource.availabilityWindows.split(',').map(e => e.trim());
+    if (entries.length === 0) return 'Not specified';
+    
+    // Extract time from first entry
+    const timeMatch = entries[0].match(/(\d{2}:\d{2})-(\d{2}:\d{2})/);
+    const time = timeMatch ? `${timeMatch[1]}-${timeMatch[2]}` : '';
+    
+    // Get abbreviated day names
+    const dayNames = entries.map(e => {
+      const match = e.match(/^(\w+)/);
+      return match ? match[1].slice(0, 3) : '';
+    }).join(', ');
+    
+    const result = `${dayNames}: ${time}`;
+    return result.length > 30 ? result.substring(0, 27) + '...' : result;
   };
 
   return (
@@ -137,7 +211,7 @@ const ResourceCard = ({ resource, onViewDetails, onEdit, isAdmin = false }) => {
       </div>
 
       {/* ── Body ── */}
-      <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+      <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
 
         {/* Capacity */}
         <MetaRow icon={<IconCapacity />} label="Capacity">
@@ -158,8 +232,8 @@ const ResourceCard = ({ resource, onViewDetails, onEdit, isAdmin = false }) => {
 
         {/* Availability */}
         <MetaRow icon={<IconClock />} label="Availability">
-          <span style={{ fontSize: '13px', fontWeight: '500', color: '#0B1F3A', lineHeight: '1.4' }}>
-            {resource.availabilityWindows}
+          <span style={{ fontSize: '12px', fontWeight: '600', color: '#0B1F3A', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {getAvailabilityDisplay()}
           </span>
         </MetaRow>
 
@@ -183,20 +257,43 @@ const ResourceCard = ({ resource, onViewDetails, onEdit, isAdmin = false }) => {
         </button>
 
         {isAdmin && (
-          <button
-            onClick={() => onEdit?.(resource.id)}
-            style={{ flex: 1, backgroundColor: 'white', color: '#0B1F3A', fontSize: '13px', fontWeight: '600', padding: '0.5rem', borderRadius: '10px', border: '1px solid rgba(11,31,58,0.18)', cursor: 'pointer', transition: 'all 180ms ease' }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#F7F8FC';
-              e.target.style.borderColor = 'rgba(11,31,58,0.30)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = 'white';
-              e.target.style.borderColor = 'rgba(11,31,58,0.18)';
-            }}
-          >
-            Edit
-          </button>
+          <>
+            <button
+              onClick={() => onEdit?.(resource.id)}
+              style={{ flex: 1, backgroundColor: 'white', color: '#0B1F3A', fontSize: '13px', fontWeight: '600', padding: '0.5rem', borderRadius: '10px', border: '1px solid rgba(11,31,58,0.18)', cursor: 'pointer', transition: 'all 180ms ease' }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#F7F8FC';
+                e.target.style.borderColor = 'rgba(11,31,58,0.30)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'white';
+                e.target.style.borderColor = 'rgba(11,31,58,0.18)';
+              }}
+            >
+              Edit
+            </button>
+
+            <button
+              onClick={handleDeleteClick}
+              style={{ backgroundColor: 'transparent', color: '#A32D2D', border: 'none', cursor: 'pointer', transition: 'color 180ms ease', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onMouseEnter={(e) => {
+                e.target.style.color = '#E24B4A';
+                if (deleteIconRef.current) {
+                  deleteIconRef.current.classList.add('trash-button-hover');
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.color = '#A32D2D';
+                if (deleteIconRef.current) {
+                  deleteIconRef.current.classList.remove('trash-button-hover');
+                }
+              }}
+            >
+              <div ref={deleteIconRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <IconTrash />
+              </div>
+            </button>
+          </>
         )}
       </div>
     </div>
