@@ -3,6 +3,7 @@ import BookingList from './bookings/BookingList';
 import BookingForm from './bookings/BookingForm';
 import Navbar from "../components/Navbar/Navbar";
 import { getAllResources } from '../services/resourceService';
+import { getAllBookings } from '../services/bookingService';
 import { useAuth } from '../AuthContext';
 
 const BookingsPage = () => {
@@ -11,16 +12,48 @@ const BookingsPage = () => {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [bookings, setBookings] = useState([]);
+  const [stats, setStats] = useState([
+    { label: 'Total Bookings', value: '0' },
+    { label: 'Approved', value: '0' },
+    { label: 'Pending', value: '0' },
+    { label: 'Rejected', value: '0' },
+    { label: 'Cancelled', value: '0' },
+  ]);
 
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'ADMIN';
 
-  const stats = [
-    { label: 'Total Bookings', value: '124' },
-    { label: 'Approved', value: '87' },
-    { label: 'Pending', value: '24' },
-    { label: 'Cancelled', value: '13' },
-  ];
+  // Fetch bookings and calculate stats
+  useEffect(() => {
+    const fetchBookingsStats = async () => {
+      try {
+        const data = await getAllBookings();
+        setBookings(data || []);
+        
+        // Calculate stats
+        const total = data?.length || 0;
+        const approved = data?.filter(b => b.status === 'APPROVED').length || 0;
+        const pending = data?.filter(b => b.status === 'PENDING').length || 0;
+        const rejected = data?.filter(b => b.status === 'REJECTED').length || 0;
+        const cancelled = data?.filter(b => b.status === 'CANCELLED').length || 0;
+        
+        setStats([
+          { label: 'Total Bookings', value: total.toString() },
+          { label: 'Approved', value: approved.toString() },
+          { label: 'Pending', value: pending.toString() },
+          { label: 'Rejected', value: rejected.toString() },
+          { label: 'Cancelled', value: cancelled.toString() },
+        ]);
+      } catch (err) {
+        console.error('Error fetching bookings stats:', err);
+      }
+    };
+
+    if (isAdmin) {
+      fetchBookingsStats();
+    }
+  }, [isAdmin]);
 
   // Fetch resources from database
   useEffect(() => {
@@ -80,15 +113,17 @@ const BookingsPage = () => {
             )}
           </div>
 
-          {/* Stats */}
-          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            {stats.map((item) => (
-              <div key={item.label} style={styles.card}>
-                <h2 style={{ fontSize: '22px', color: '#0B1F3A', margin: 0 }}>{item.value}</h2>
-                <p style={{ fontSize: '12px', color: '#888', margin: 0, marginTop: '4px' }}>{item.label}</p>
-              </div>
-            ))}
-          </div>
+          {/* Stats - Admin Only */}
+          {isAdmin && (
+            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+              {stats.map((item) => (
+                <div key={item.label} style={styles.card}>
+                  <h2 style={{ fontSize: '22px', color: '#0B1F3A', margin: 0 }}>{item.value}</h2>
+                  <p style={{ fontSize: '12px', color: '#888', margin: 0, marginTop: '4px' }}>{item.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
