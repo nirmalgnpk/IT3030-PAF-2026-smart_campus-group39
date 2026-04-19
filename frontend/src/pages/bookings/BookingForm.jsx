@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createBooking } from '../../services/bookingService';
+import { getResourceById } from '../../services/resourceService';
 
 const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
     const [formData, setFormData] = useState({
@@ -15,6 +16,30 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState('');
+    const [resourceData, setResourceData] = useState(null);
+    const [resourceLoading, setResourceLoading] = useState(true);
+    const [resourceError, setResourceError] = useState(null);
+
+    // Fetch resource details when component mounts or resourceId changes
+    useEffect(() => {
+        const fetchResource = async () => {
+            if (!resourceId) return;
+            
+            setResourceLoading(true);
+            setResourceError(null);
+            try {
+                const data = await getResourceById(resourceId);
+                setResourceData(data);
+            } catch (err) {
+                console.error('Error fetching resource:', err);
+                setResourceError(err.message || 'Failed to load resource details');
+            } finally {
+                setResourceLoading(false);
+            }
+        };
+
+        fetchResource();
+    }, [resourceId]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -90,8 +115,64 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
             )}
 
             {successMessage && (
-                <div style={styles.successBox}>
-                    <p style={styles.successText}>{successMessage}</p>
+                <div>
+                    <div style={styles.successBox}>
+                        <p style={styles.successText}>{successMessage}</p>
+                    </div>
+                    
+                    {/* Display Resource Details Card */}
+                    {resourceData && (
+                        <div style={styles.resourceCard}>
+                            <h3 style={styles.resourceCardTitle}>Resource Details</h3>
+                            
+                            <div style={styles.resourceGrid}>
+                                <div style={styles.resourceField}>
+                                    <label style={styles.resourceLabel}>Resource Name</label>
+                                    <span style={styles.resourceValue}>{resourceData.name}</span>
+                                </div>
+                                
+                                <div style={styles.resourceField}>
+                                    <label style={styles.resourceLabel}>Type</label>
+                                    <span style={styles.resourceValue}>{resourceData.type?.replace(/_/g, ' ') || 'N/A'}</span>
+                                </div>
+                                
+                                <div style={styles.resourceField}>
+                                    <label style={styles.resourceLabel}>Capacity</label>
+                                    <span style={styles.resourceValue}>{resourceData.capacity || 'N/A'} people</span>
+                                </div>
+                                
+                                <div style={styles.resourceField}>
+                                    <label style={styles.resourceLabel}>Location</label>
+                                    <span style={styles.resourceValue}>{resourceData.location || 'N/A'}</span>
+                                </div>
+                                
+                                <div style={styles.resourceField}>
+                                    <label style={styles.resourceLabel}>Status</label>
+                                    <span style={{
+                                        ...styles.resourceValue,
+                                        color: resourceData.status === 'ACTIVE' ? '#0F6E56' : '#A32D2D',
+                                        fontWeight: '600'
+                                    }}>
+                                        {resourceData.status?.replace(/_/g, ' ') || 'N/A'}
+                                    </span>
+                                </div>
+                                
+                                {resourceData.availabilityHours && (
+                                    <div style={styles.resourceField}>
+                                        <label style={styles.resourceLabel}>Availability Hours</label>
+                                        <span style={styles.resourceValue}>{resourceData.availabilityHours}</span>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {resourceData.description && (
+                                <div style={styles.resourceDescription}>
+                                    <label style={styles.resourceLabel}>Description</label>
+                                    <p style={styles.resourceDescriptionText}>{resourceData.description}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -343,6 +424,63 @@ const styles = {
         color: '#3c3',
         fontSize: '13px',
         margin: 0,
+    },
+    // New styles for resource card display
+    resourceCard: {
+        backgroundColor: '#f9f9f9',
+        border: '2px solid #E8D4B8',
+        borderRadius: '12px',
+        padding: '24px',
+        marginBottom: '24px',
+        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)',
+    },
+    resourceCardTitle: {
+        fontSize: '18px',
+        fontWeight: '700',
+        color: '#0B1F3A',
+        marginBottom: '16px',
+        borderBottom: '2px solid #C8963E',
+        paddingBottom: '12px',
+    },
+    resourceGrid: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '16px',
+        marginBottom: '16px',
+    },
+    resourceField: {
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '12px',
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        border: '1px solid #E8D4B8',
+    },
+    resourceLabel: {
+        fontSize: '11px',
+        fontWeight: '700',
+        color: '#5A6A82',
+        textTransform: 'uppercase',
+        letterSpacing: '0.04em',
+        marginBottom: '6px',
+    },
+    resourceValue: {
+        fontSize: '14px',
+        fontWeight: '600',
+        color: '#0B1F3A',
+        lineHeight: '1.4',
+    },
+    resourceDescription: {
+        padding: '12px',
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        border: '1px solid #E8D4B8',
+    },
+    resourceDescriptionText: {
+        fontSize: '13px',
+        color: '#333',
+        lineHeight: '1.5',
+        margin: '6px 0 0 0',
     },
 };
 

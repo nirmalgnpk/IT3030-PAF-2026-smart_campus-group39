@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import BookingList from './bookings/BookingList';
 import BookingForm from './bookings/BookingForm';
 import Navbar from "../components/Navbar/Navbar";
+import { getAllResources } from '../services/resourceService';
 
 const BookingsPage = () => {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedResource, setSelectedResource] = useState(null);
+  const [resources, setResources] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const stats = [
     { label: 'Total Bookings', value: '124' },
@@ -14,13 +18,26 @@ const BookingsPage = () => {
     { label: 'Cancelled', value: '13' },
   ];
 
-  // Sample resources - in production, fetch from API
-  const resources = [
-    { id: '1', name: 'Conference Room A' },
-    { id: '2', name: 'Lecture Hall B' },
-    { id: '3', name: 'Lab C' },
-    { id: '4', name: 'Meeting Room D' },
-  ];
+  // Fetch resources from database
+  useEffect(() => {
+    const fetchResources = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getAllResources();
+        setResources(data || []);
+      } catch (err) {
+        console.error('Error fetching resources:', err);
+        setError(err.message || 'Failed to load resources');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (showBookingForm) {
+      fetchResources();
+    }
+  }, [showBookingForm]);
 
   const handleResourceSelect = (resource) => {
     setSelectedResource(resource);
@@ -77,24 +94,99 @@ const BookingsPage = () => {
       {/* Booking Form Modal - Step 1: Select Resource */}
       {showBookingForm && !selectedResource && (
         <div style={styles.overlay}>
-          <div style={styles.modal}>
+          <div style={{ ...styles.modal, maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
             <h2 style={styles.modalTitle}>Select Resource</h2>
             <p style={styles.modalSubtitle}>Choose which resource you want to book</p>
             
-            <div style={styles.resourceGrid}>
-              {resources.map((resource) => (
-                <button
-                  key={resource.id}
-                  onClick={() => handleResourceSelect(resource)}
-                  style={styles.resourceCard}
-                >
-                  <div style={{ fontSize: '20px', marginBottom: '8px' }}>📍</div>
-                  <p style={{ margin: 0, fontWeight: '600', color: '#0B1F3A' }}>
-                    {resource.name}
-                  </p>
-                </button>
-              ))}
-            </div>
+            {loading && (
+              <div style={styles.loadingContainer}>
+                <div style={styles.spinner}>⏳</div>
+                <p style={{ textAlign: 'center', color: '#666' }}>Loading available resources...</p>
+              </div>
+            )}
+
+            {error && (
+              <div style={styles.errorBox}>
+                <p style={styles.errorText}>{error}</p>
+              </div>
+            )}
+
+            {!loading && resources.length > 0 && (
+              <div style={styles.resourceCardGrid}>
+                {resources.map((resource) => (
+                  <button
+                    key={resource.id}
+                    onClick={() => handleResourceSelect(resource)}
+                    style={styles.detailedResourceCard}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
+                    }}
+                  >
+                    {/* Accent bar */}
+                    <div style={{
+                      height: '3px',
+                      width: '100%',
+                      background: getTypeGradient(resource.type),
+                      borderTopLeftRadius: '12px',
+                      borderTopRightRadius: '12px'
+                    }} />
+
+                    <div style={styles.resourceCardContent}>
+                      {/* Type badge */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                        <span style={{ ...styles.typeBadge, ...getTypeBadgeStyle(resource.type) }}>
+                          {formatResourceType(resource.type)}
+                        </span>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          backgroundColor: resource.status === 'ACTIVE' ? '#E6F7F0' : '#FCEBEB',
+                          color: resource.status === 'ACTIVE' ? '#0F6E56' : '#A32D2D'
+                        }}>
+                          {resource.status?.replace(/_/g, ' ') || 'N/A'}
+                        </span>
+                      </div>
+
+                      {/* Resource name */}
+                      <h3 style={styles.resourceName}>{resource.name}</h3>
+
+                      {/* Details grid */}
+                      <div style={styles.detailsGrid}>
+                        <div style={styles.detailItem}>
+                          <span style={styles.detailLabel}>Capacity</span>
+                          <span style={styles.detailValue}>{resource.capacity} people</span>
+                        </div>
+                        <div style={styles.detailItem}>
+                          <span style={styles.detailLabel}>Location</span>
+                          <span style={styles.detailValue}>{resource.location || 'N/A'}</span>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      {resource.description && (
+                        <p style={styles.resourceDescription}>
+                          {resource.description.substring(0, 80)}
+                          {resource.description.length > 80 ? '...' : ''}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {!loading && resources.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <p style={{ color: '#999', marginBottom: '0' }}>No resources available at the moment</p>
+              </div>
+            )}
 
             <button
               onClick={handleFormClose}
@@ -121,6 +213,38 @@ const BookingsPage = () => {
       )}
     </div>
   );
+};
+
+// Helper functions for resource type styling
+const TYPE_GRADIENT = {
+  LECTURE_HALL: 'linear-gradient(to right, #1A3F8F, #5882E0)',
+  LAB: 'linear-gradient(to right, #0F6E56, #1D9E75)',
+  MEETING_ROOM: 'linear-gradient(to right, #854F0B, #C8963E)',
+  EQUIPMENT: 'linear-gradient(to right, #534AB7, #8F7FE8)',
+};
+
+const TYPE_BADGE = {
+  LECTURE_HALL: { backgroundColor: '#E8F0FD', color: '#1A3F8F' },
+  LAB: { backgroundColor: '#E6F7F0', color: '#0F6E56' },
+  MEETING_ROOM: { backgroundColor: '#FDF5E6', color: '#854F0B' },
+  EQUIPMENT: { backgroundColor: '#F0EBF8', color: '#534AB7' },
+};
+
+const getTypeGradient = (type) => {
+  return TYPE_GRADIENT[type] || 'linear-gradient(to right, #999, #aaa)';
+};
+
+const getTypeBadgeStyle = (type) => {
+  return TYPE_BADGE[type] || { backgroundColor: '#f3f4f6', color: '#6b7280' };
+};
+
+const formatResourceType = (type) => {
+  if (!type) return 'Unknown';
+  return type
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 };
 
 const styles = {
@@ -172,6 +296,94 @@ const styles = {
     color: '#666',
     marginBottom: '24px',
     margin: '8px 0 24px 0',
+  },
+  resourceCardGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: '16px',
+    marginBottom: '24px',
+  },
+  detailedResourceCard: {
+    backgroundColor: 'white',
+    border: '1px solid rgba(11, 31, 58, 0.1)',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    cursor: 'pointer',
+    transition: 'all 220ms ease-out',
+    textAlign: 'left',
+    padding: 0,
+    outline: 'none',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+  },
+  resourceCardContent: {
+    padding: '16px',
+  },
+  typeBadge: {
+    fontSize: '11px',
+    fontWeight: '600',
+    letterSpacing: '0.04em',
+    padding: '4px 8px',
+    borderRadius: '8px',
+  },
+  resourceName: {
+    fontSize: '15px',
+    fontWeight: 'bold',
+    color: '#0B1F3A',
+    margin: '0 0 12px 0',
+    lineHeight: '1.4',
+  },
+  detailsGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px',
+    marginBottom: '12px',
+  },
+  detailItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: '#f9f9f9',
+    padding: '8px',
+    borderRadius: '6px',
+  },
+  detailLabel: {
+    fontSize: '10px',
+    fontWeight: '700',
+    color: '#5A6A82',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    marginBottom: '4px',
+  },
+  detailValue: {
+    fontSize: '12px',
+    fontWeight: '600',
+    color: '#0B1F3A',
+  },
+  resourceDescription: {
+    fontSize: '12px',
+    color: '#666',
+    margin: 0,
+    lineHeight: '1.4',
+    fontStyle: 'italic',
+  },
+  loadingContainer: {
+    textAlign: 'center',
+    padding: '40px 20px',
+  },
+  spinner: {
+    fontSize: '48px',
+    marginBottom: '16px',
+  },
+  errorBox: {
+    padding: '12px 16px',
+    backgroundColor: '#fee',
+    border: '1px solid #fcc',
+    borderRadius: '8px',
+    marginBottom: '16px',
+  },
+  errorText: {
+    color: '#c33',
+    fontSize: '13px',
+    margin: 0,
   },
   resourceGrid: {
     display: 'grid',
