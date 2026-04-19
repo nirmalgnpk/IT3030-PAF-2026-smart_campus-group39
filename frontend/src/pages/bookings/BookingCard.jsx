@@ -4,18 +4,33 @@ const BookingCard = ({ booking, onApprove, onReject, onCancel, isAdmin }) => {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
 
+    const getStatusBg = (status) => {
+        switch (status) {
+            case 'PENDING':
+                return '#fef3c7';
+            case 'APPROVED':
+                return '#dcfce7';
+            case 'REJECTED':
+                return '#fee2e2';
+            case 'CANCELLED':
+                return '#f3f4f6';
+            default:
+                return '#f3f4f6';
+        }
+    };
+
     const getStatusColor = (status) => {
         switch (status) {
             case 'PENDING':
-                return 'bg-yellow-100 text-yellow-800';
+                return '#b45309';
             case 'APPROVED':
-                return 'bg-green-100 text-green-800';
+                return '#15803d';
             case 'REJECTED':
-                return 'bg-red-100 text-red-800';
+                return '#dc2626';
             case 'CANCELLED':
-                return 'bg-gray-100 text-gray-800';
+                return '#6b7280';
             default:
-                return 'bg-gray-100 text-gray-800';
+                return '#6b7280';
         }
     };
 
@@ -38,67 +53,69 @@ const BookingCard = ({ booking, onApprove, onReject, onCancel, isAdmin }) => {
 
     return (
         <>
-            <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-6 border border-gray-200">
+            <div style={styles.card}>
                 {/* Header */}
-                <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-xl font-bold text-gray-800">
-                        {booking.resourceName}
-                    </h3>
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(booking.status)}`}>
+                <div style={styles.header}>
+                    <h3 style={styles.resourceName}>{booking.resourceName}</h3>
+                    <span style={{
+                        ...styles.statusBadge,
+                        backgroundColor: getStatusBg(booking.status),
+                        color: getStatusColor(booking.status),
+                    }}>
                         {booking.status}
                     </span>
                 </div>
 
                 {/* Date and Time */}
-                <div className="mb-3">
-                    <p className="text-gray-700">
-                        <span className="font-semibold">Date:</span> {booking.date}
+                <div style={styles.section}>
+                    <p style={styles.infoText}>
+                        <span style={styles.label}>Date:</span> {booking.date}
                     </p>
-                    <p className="text-gray-700">
-                        <span className="font-semibold">Time:</span> {booking.startTime} — {booking.endTime}
+                    <p style={styles.infoText}>
+                        <span style={styles.label}>Time:</span> {booking.startTime} — {booking.endTime}
                     </p>
                 </div>
 
                 {/* Purpose and Attendees */}
-                <div className="mb-3">
-                    <p className="text-gray-700">
-                        <span className="font-semibold">Purpose:</span> {booking.purpose}
+                <div style={styles.section}>
+                    <p style={styles.infoText}>
+                        <span style={styles.label}>Purpose:</span> {booking.purpose}
                     </p>
-                    <p className="text-gray-700">
-                        <span className="font-semibold">Expected Attendees:</span> {booking.expectedAttendees}
+                    <p style={styles.infoText}>
+                        <span style={styles.label}>Expected Attendees:</span> {booking.expectedAttendees}
                     </p>
                 </div>
 
                 {/* User Information */}
-                <div className="mb-4 pb-4 border-b border-gray-200">
-                    <p className="text-gray-700">
-                        <span className="font-semibold">Booked by:</span> {booking.userName}
+                <div style={styles.userSection}>
+                    <p style={styles.infoText}>
+                        <span style={styles.label}>Booked by:</span> {booking.userName}
                     </p>
-                    <p className="text-gray-600 text-sm">{booking.userEmail}</p>
+                    <p style={styles.emailText}>{booking.userEmail}</p>
                 </div>
 
                 {/* Rejection Reason (if rejected) */}
                 {booking.status === 'REJECTED' && booking.rejectionReason && (
-                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
-                        <p className="text-red-700 font-semibold text-sm">Rejection Reason:</p>
-                        <p className="text-red-600 text-sm">{booking.rejectionReason}</p>
+                    <div style={styles.rejectionBox}>
+                        <p style={styles.rejectionLabel}>Rejection Reason:</p>
+                        <p style={styles.rejectionText}>{booking.rejectionReason}</p>
                     </div>
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex gap-2 flex-wrap">
+                <div style={styles.actions}>
                     {/* PENDING + Admin: Approve and Reject buttons */}
                     {booking.status === 'PENDING' && isAdmin && (
                         <>
                             <button
                                 onClick={() => onApprove(booking.id)}
-                                className="flex-1 min-w-[120px] bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
+                                style={styles.btnApprove}
                             >
                                 Approve
                             </button>
                             <button
                                 onClick={handleRejectClick}
-                                className="flex-1 min-w-[120px] bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
+                                style={styles.btnReject}
                             >
                                 Reject
                             </button>
@@ -109,7 +126,7 @@ const BookingCard = ({ booking, onApprove, onReject, onCancel, isAdmin }) => {
                     {booking.status === 'PENDING' && !isAdmin && (
                         <button
                             onClick={() => onCancel(booking.id)}
-                            className="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
+                            style={styles.btnCancel}
                         >
                             Cancel Request
                         </button>
@@ -119,9 +136,9 @@ const BookingCard = ({ booking, onApprove, onReject, onCancel, isAdmin }) => {
                     {booking.status === 'APPROVED' && (
                         <button
                             onClick={() => onCancel(booking.id)}
-                            className="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
+                            style={styles.btnCancel}
                         >
-                            Cancel
+                            Cancel Booking
                         </button>
                     )}
                 </div>
@@ -129,29 +146,31 @@ const BookingCard = ({ booking, onApprove, onReject, onCancel, isAdmin }) => {
 
             {/* Rejection Reason Modal */}
             {showRejectModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-                        <h3 className="text-lg font-bold text-gray-800 mb-4">
-                            Reject Booking
-                        </h3>
+                <div style={styles.overlay}>
+                    <div style={styles.modal}>
+                        <h3 style={styles.modalTitle}>Reject Booking</h3>
                         <textarea
                             value={rejectionReason}
                             onChange={(e) => setRejectionReason(e.target.value)}
                             placeholder="Enter rejection reason..."
-                            className="w-full border border-gray-300 rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-red-500"
+                            style={styles.textarea}
                             rows="4"
                         />
-                        <div className="flex gap-2 justify-end">
+                        <div style={styles.modalActions}>
                             <button
                                 onClick={handleRejectCancel}
-                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors duration-200"
+                                style={styles.btnSecondary}
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleRejectConfirm}
                                 disabled={!rejectionReason.trim()}
-                                className="px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors duration-200"
+                                style={{
+                                    ...styles.btnPrimary,
+                                    opacity: !rejectionReason.trim() ? 0.5 : 1,
+                                    cursor: !rejectionReason.trim() ? 'not-allowed' : 'pointer',
+                                }}
                             >
                                 Confirm Reject
                             </button>
@@ -161,6 +180,184 @@ const BookingCard = ({ booking, onApprove, onReject, onCancel, isAdmin }) => {
             )}
         </>
     );
+};
+
+const styles = {
+    card: {
+        backgroundColor: 'white',
+        borderRadius: '10px',
+        padding: '16px 20px',
+        border: '0.5px solid #e5e7eb',
+        marginBottom: '12px',
+    },
+    header: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: '12px',
+    },
+    resourceName: {
+        fontSize: '16px',
+        fontWeight: '700',
+        color: '#0B1F3A',
+        margin: 0,
+    },
+    statusBadge: {
+        paddingLeft: '12px',
+        paddingRight: '12px',
+        paddingTop: '4px',
+        paddingBottom: '4px',
+        borderRadius: '6px',
+        fontSize: '12px',
+        fontWeight: '600',
+    },
+    section: {
+        marginBottom: '8px',
+    },
+    userSection: {
+        paddingTop: '8px',
+        paddingBottom: '8px',
+        borderTop: '0.5px solid #e5e7eb',
+        borderBottom: '0.5px solid #e5e7eb',
+        marginBottom: '12px',
+    },
+    infoText: {
+        fontSize: '13px',
+        color: '#555',
+        margin: '4px 0',
+    },
+    label: {
+        fontWeight: '600',
+        color: '#0B1F3A',
+    },
+    emailText: {
+        fontSize: '12px',
+        color: '#888',
+        margin: '4px 0 0 0',
+    },
+    rejectionBox: {
+        padding: '12px',
+        backgroundColor: '#fee2e2',
+        border: '1px solid #fca5a5',
+        borderRadius: '8px',
+        marginBottom: '12px',
+    },
+    rejectionLabel: {
+        fontWeight: '600',
+        color: '#b91c1c',
+        fontSize: '12px',
+        margin: '0 0 4px 0',
+    },
+    rejectionText: {
+        color: '#991b1b',
+        fontSize: '13px',
+        margin: 0,
+    },
+    actions: {
+        display: 'flex',
+        gap: '8px',
+        flexWrap: 'wrap',
+        marginTop: '12px',
+    },
+    btnApprove: {
+        flex: 1,
+        minWidth: '100px',
+        padding: '8px 16px',
+        backgroundColor: '#16a34a',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '12px',
+        fontWeight: '600',
+        cursor: 'pointer',
+    },
+    btnReject: {
+        flex: 1,
+        minWidth: '100px',
+        padding: '8px 16px',
+        backgroundColor: '#dc2626',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '12px',
+        fontWeight: '600',
+        cursor: 'pointer',
+    },
+    btnCancel: {
+        flex: 1,
+        minWidth: '100px',
+        padding: '8px 16px',
+        backgroundColor: '#6b7280',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '12px',
+        fontWeight: '600',
+        cursor: 'pointer',
+    },
+    overlay: {
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 50,
+        padding: '20px',
+    },
+    modal: {
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '28px',
+        width: '100%',
+        maxWidth: '440px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+    },
+    modalTitle: {
+        fontSize: '18px',
+        fontWeight: '600',
+        color: '#0B1F3A',
+        marginBottom: '16px',
+        margin: 0,
+    },
+    textarea: {
+        width: '100%',
+        border: '1px solid #ddd',
+        borderRadius: '8px',
+        padding: '12px',
+        marginBottom: '16px',
+        fontSize: '14px',
+        outline: 'none',
+        resize: 'vertical',
+        fontFamily: 'inherit',
+        color: '#0B1F3A',
+        boxSizing: 'border-box',
+    },
+    modalActions: {
+        display: 'flex',
+        gap: '10px',
+        justifyContent: 'flex-end',
+    },
+    btnSecondary: {
+        padding: '9px 18px',
+        backgroundColor: '#f0f0f0',
+        color: '#444',
+        border: 'none',
+        borderRadius: '8px',
+        fontWeight: '500',
+        fontSize: '14px',
+        cursor: 'pointer',
+    },
+    btnPrimary: {
+        padding: '9px 18px',
+        backgroundColor: '#C8963E',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        fontWeight: '500',
+        fontSize: '14px',
+        cursor: 'pointer',
+    },
 };
 
 export default BookingCard;

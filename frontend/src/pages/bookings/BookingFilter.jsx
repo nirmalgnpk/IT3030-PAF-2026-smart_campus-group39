@@ -37,7 +37,8 @@ const BookingFilter = ({ onFilter, isAdmin }) => {
                     >
                         <option value="">All Statuses</option>
                         <option value="PENDING">Pending</option>
-                        <option value="CONFIRMED">Confirmed</option>
+                        <option value="APPROVED">Approved</option>
+                        <option value="REJECTED">Rejected</option>
                         <option value="CANCELLED">Cancelled</option>
                     </select>
                 </div>

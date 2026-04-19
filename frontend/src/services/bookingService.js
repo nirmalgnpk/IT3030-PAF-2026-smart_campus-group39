@@ -179,3 +179,29 @@ export const cancelBooking = async (id) => {
         throw error;
     }
 };
+
+/**
+ * Delete a booking (Admin only)
+ * @param {String} id - Booking ID
+ * @returns {Promise<void>}
+ */
+export const deleteBooking = async (id) => {
+    try {
+        const response = await fetch(`${API_URL}/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || `HTTP Error: ${response.status}`);
+        }
+        
+        return response.ok;
+    } catch (error) {
+        console.error(`Error deleting booking ${id}:`, error);
+        throw error;
+    }
+};
