@@ -1,23 +1,6 @@
-const API_BASE_URL = 'http://localhost:8080/api/resources';
+import api from '../api.js';
 
-/**
- * Build query string from filter object
- * @param {object} filters - Filter object with optional keys: type, location, minCapacity
- * @returns {string} - Query string (e.g., "?type=LAB&location=Block+A")
- */
-const buildQueryString = (filters) => {
-  if (!filters || Object.keys(filters).length === 0) {
-    return '';
-  }
-
-  const params = new URLSearchParams();
-  if (filters.type) params.append('type', filters.type);
-  if (filters.location) params.append('location', filters.location);
-  if (filters.minCapacity) params.append('minCapacity', filters.minCapacity);
-
-  const queryString = params.toString();
-  return queryString ? `?${queryString}` : '';
-};
+const API_BASE_URL = '/api/resources';
 
 /**
  * Get all resources with optional filtering
@@ -27,20 +10,13 @@ const buildQueryString = (filters) => {
  */
 export const getAllResources = async (filters = {}) => {
   try {
-    const queryString = buildQueryString(filters);
-    const response = await fetch(`${API_BASE_URL}${queryString}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const params = {};
+    if (filters.type) params.type = filters.type;
+    if (filters.location) params.location = filters.location;
+    if (filters.minCapacity) params.minCapacity = filters.minCapacity;
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || `Failed to fetch resources: ${response.statusText}`);
-    }
-
-    return await response.json();
+    const response = await api.get(API_BASE_URL, { params });
+    return response.data;
   } catch (error) {
     throw new Error(error.message || 'Error fetching resources');
   }
@@ -54,19 +30,8 @@ export const getAllResources = async (filters = {}) => {
  */
 export const getResourceById = async (id) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || `Failed to fetch resource: ${response.statusText}`);
-    }
-
-    return await response.json();
+    const response = await api.get(`${API_BASE_URL}/${id}`);
+    return response.data;
   } catch (error) {
     throw new Error(error.message || 'Error fetching resource');
   }
@@ -80,20 +45,8 @@ export const getResourceById = async (id) => {
  */
 export const createResource = async (resourceData) => {
   try {
-    const response = await fetch(API_BASE_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(resourceData),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || `Failed to create resource: ${response.statusText}`);
-    }
-
-    return await response.json();
+    const response = await api.post(API_BASE_URL, resourceData);
+    return response.data;
   } catch (error) {
     throw new Error(error.message || 'Error creating resource');
   }
@@ -108,20 +61,8 @@ export const createResource = async (resourceData) => {
  */
 export const updateResource = async (id, resourceData) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(resourceData),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || `Failed to update resource: ${response.statusText}`);
-    }
-
-    return await response.json();
+    const response = await api.put(`${API_BASE_URL}/${id}`, resourceData);
+    return response.data;
   } catch (error) {
     throw new Error(error.message || 'Error updating resource');
   }
@@ -135,22 +76,8 @@ export const updateResource = async (id, resourceData) => {
  */
 export const deleteResource = async (id) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || `Failed to delete resource: ${response.statusText}`);
-    }
-
-    // DELETE typically returns 204 No Content or empty 200
-    if (response.status !== 204) {
-      return await response.json();
-    }
+    const response = await api.delete(`${API_BASE_URL}/${id}`);
+    return response.data;
   } catch (error) {
     throw new Error(error.message || 'Error deleting resource');
   }

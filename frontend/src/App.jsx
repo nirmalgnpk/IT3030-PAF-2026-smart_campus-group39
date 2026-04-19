@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './AuthContext';
 import FacilitiesPage from './pages/facilities/FacilitiesPage';
 import ResourceDetail from './pages/facilities/ResourceDetail';
 import BookingsPage from './pages/BookingsPage';
 import BookingDetail from './pages/bookings/BookingDetail';
 import Home from "./pages/Home/Home";
+import Login from './pages/Login/Login';
+import Register from './pages/Register/Register';
+import ForgotPassword from './pages/Login/ForgotPassword';
 
 /**
  * App Component
@@ -15,20 +19,27 @@ function App() {
   const [isAdmin] = useState(true);
 
   return (
-      <BrowserRouter>
-        <Routes>
-          {/* Facilities Module Routes */}
-          <Route path="/facilities" element={<FacilitiesPage isAdmin={isAdmin} />} />
-          <Route path="/facilities/:id" element={<ResourceDetail isAdmin={isAdmin} />} />
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Auth Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          {/* Bookings Module Routes */}
-          <Route path="/bookings" element={<BookingsPage />} />
-          <Route path="/bookings/:id" element={<BookingDetail />} />
+            {/* Facilities Module Routes */}
+            <Route path="/facilities" element={<FacilitiesPage isAdmin={isAdmin} />} />
+            <Route path="/facilities/:id" element={<ResourceDetail isAdmin={isAdmin} />} />
 
-          {/* Home Route */}
-          <Route path="/" element={<Home />} />
-        </Routes>
-      </BrowserRouter>
+            {/* Bookings Module Routes */}
+            <Route path="/bookings" element={<BookingsPage />} />
+            <Route path="/bookings/:id" element={<BookingDetail />} />
+
+            {/* Home Route */}
+            <Route path="/" element={<Home />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
   );
 }
 

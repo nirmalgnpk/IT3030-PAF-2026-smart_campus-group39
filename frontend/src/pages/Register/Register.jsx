@@ -84,7 +84,7 @@ export default function Register() {
         if (isStudent)            { setSelectedRole("STUDENT"); setShowRolePicker(false); }
         else if (hasEmail)        { setShowRolePicker(true); if (selectedRole === "STUDENT") setSelectedRole(null); }
         else                      { setShowRolePicker(false); }
-    }, [form.email]);
+    }, [form.email, hasEmail, isStudent, selectedRole]);
 
     // Resend countdown timer (starts when OTP step is entered)
     useEffect(() => {
@@ -153,7 +153,7 @@ export default function Register() {
                 otp,
             });
             login(data);
-            navigate("/dashboard");
+            navigate("/");
         } catch (err) {
             setOtpError(err.response?.data?.message || "Invalid OTP. Please try again.");
         } finally {

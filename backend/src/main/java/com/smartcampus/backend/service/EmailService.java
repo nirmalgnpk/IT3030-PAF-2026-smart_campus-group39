@@ -11,10 +11,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class EmailService {
 
-    @Autowired
+    @Autowired(required = false)
     private JavaMailSender mailSender;
 
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.username:no-reply@smartcampus.com}")
     private String fromEmail;
 
     /**
@@ -25,6 +25,11 @@ public class EmailService {
      * @param purpose "REGISTER" | "RESET_PASSWORD"
      */
     public void sendOtp(String to, String otp, String purpose) throws MessagingException {
+
+        if (mailSender == null) {
+            System.out.println("[EMAIL] Mail not configured. OTP email to " + to + " not sent. OTP: " + otp);
+            return;
+        }
 
         boolean isRegister = "REGISTER".equals(purpose);
 

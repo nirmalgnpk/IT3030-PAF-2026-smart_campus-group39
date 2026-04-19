@@ -96,7 +96,7 @@ export default function Login() {
         } else {
             setShowRolePicker(false);
         }
-    }, [email]);
+    }, [email, hasEmail, isStudent, selectedRole]);
 
     function validate() {
         const e = {};
@@ -119,7 +119,7 @@ export default function Login() {
                 password,
             });
             login(data);
-            navigate(data.role === "ADMIN" ? "/admin/dashboard" : "/dashboard");
+            navigate("/");
         } catch (err) {
             setServerError(err.response?.data?.message || "Invalid email or password.");
         } finally {

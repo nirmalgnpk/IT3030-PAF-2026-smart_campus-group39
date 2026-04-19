@@ -65,6 +65,9 @@ public class SecurityConfig {
 
                         // Public GET resources
                         .requestMatchers(HttpMethod.GET, "/api/resources/**").permitAll()
+                        
+                        // Public booking creation (POST only, no auth required)
+                        .requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
 
                         // Admin only
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -96,8 +99,10 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000"
-                // "http://localhost:5173"
+                "http://localhost:3000",
+                "http://localhost:3001",
+                "http://localhost:3005",
+                "http://localhost:5173"
         ));
 
         configuration.setAllowedMethods(Arrays.asList(

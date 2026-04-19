@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:8080/api/bookings';
+import api from '../api.js';
+
+const API_URL = '/api/bookings';
 
 /**
  * Get all bookings with optional filters
@@ -7,23 +9,15 @@ const API_URL = 'http://localhost:8080/api/bookings';
  */
 export const getAllBookings = async (filters = {}) => {
     try {
-        const params = new URLSearchParams();
+        const params = {};
         
-        if (filters.status) params.append('status', filters.status);
-        if (filters.userId) params.append('userId', filters.userId);
-        if (filters.resourceId) params.append('resourceId', filters.resourceId);
+        if (filters.status) params.status = filters.status;
+        if (filters.userId) params.userId = filters.userId;
+        if (filters.resourceId) params.resourceId = filters.resourceId;
         
-        const queryString = params.toString();
-        const url = queryString ? `${API_URL}?${queryString}` : API_URL;
+        const response = await api.get(API_URL, { params });
         
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || `HTTP Error: ${response.status}`);
-        }
-        
-        return await response.json();
+        return response.data;
     } catch (error) {
         console.error('Error fetching all bookings:', error);
         throw error;
@@ -37,14 +31,8 @@ export const getAllBookings = async (filters = {}) => {
  */
 export const getBookingById = async (id) => {
     try {
-        const response = await fetch(`${API_URL}/${id}`);
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || `HTTP Error: ${response.status}`);
-        }
-        
-        return await response.json();
+        const response = await api.get(`${API_URL}/${id}`);
+        return response.data;
     } catch (error) {
         console.error(`Error fetching booking ${id}:`, error);
         throw error;
@@ -58,14 +46,8 @@ export const getBookingById = async (id) => {
  */
 export const getUserBookings = async (userId) => {
     try {
-        const response = await fetch(`${API_URL}/user/${userId}`);
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || `HTTP Error: ${response.status}`);
-        }
-        
-        return await response.json();
+        const response = await api.get(`${API_URL}/user/${userId}`);
+        return response.data;
     } catch (error) {
         console.error(`Error fetching bookings for user ${userId}:`, error);
         throw error;
@@ -80,20 +62,8 @@ export const getUserBookings = async (userId) => {
  */
 export const createBooking = async (bookingData) => {
     try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(bookingData),
-        });
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || `HTTP Error: ${response.status}`);
-        }
-        
-        return await response.json();
+        const response = await api.post(API_URL, bookingData);
+        return response.data;
     } catch (error) {
         console.error('Error creating booking:', error);
         throw error;
@@ -107,19 +77,8 @@ export const createBooking = async (bookingData) => {
  */
 export const approveBooking = async (id) => {
     try {
-        const response = await fetch(`${API_URL}/${id}/approve`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || `HTTP Error: ${response.status}`);
-        }
-        
-        return await response.json();
+        const response = await api.put(`${API_URL}/${id}/approve`);
+        return response.data;
     } catch (error) {
         console.error(`Error approving booking ${id}:`, error);
         throw error;
@@ -134,20 +93,8 @@ export const approveBooking = async (id) => {
  */
 export const rejectBooking = async (id, reason) => {
     try {
-        const response = await fetch(`${API_URL}/${id}/reject`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ reason }),
-        });
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || `HTTP Error: ${response.status}`);
-        }
-        
-        return await response.json();
+        const response = await api.put(`${API_URL}/${id}/reject`, { reason });
+        return response.data;
     } catch (error) {
         console.error(`Error rejecting booking ${id}:`, error);
         throw error;
@@ -161,19 +108,8 @@ export const rejectBooking = async (id, reason) => {
  */
 export const cancelBooking = async (id) => {
     try {
-        const response = await fetch(`${API_URL}/${id}/cancel`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || `HTTP Error: ${response.status}`);
-        }
-        
-        return await response.json();
+        const response = await api.put(`${API_URL}/${id}/cancel`);
+        return response.data;
     } catch (error) {
         console.error(`Error cancelling booking ${id}:`, error);
         throw error;
@@ -187,19 +123,8 @@ export const cancelBooking = async (id) => {
  */
 export const deleteBooking = async (id) => {
     try {
-        const response = await fetch(`${API_URL}/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || `HTTP Error: ${response.status}`);
-        }
-        
-        return response.ok;
+        await api.delete(`${API_URL}/${id}`);
+        return true;
     } catch (error) {
         console.error(`Error deleting booking ${id}:`, error);
         throw error;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { createBooking } from '../../services/bookingService';
 
 const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
