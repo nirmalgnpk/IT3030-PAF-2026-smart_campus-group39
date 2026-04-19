@@ -4,6 +4,9 @@ import FacilitiesPage from './pages/facilities/FacilitiesPage';
 import ResourceDetail from './pages/facilities/ResourceDetail';
 import Home from "./pages/Home/Home";
 import TicketPage from "./pages/tickets/TicketPage";
+import TicketListPage from "./pages/tickets/TicketListPage";
+import TicketCreatePage from "./pages/tickets/TicketCreatePage";
+import TicketDetailPage from "./pages/tickets/TicketDetailPage";
 
 /**
  * App Component
@@ -22,7 +25,12 @@ function App() {
 
           {/* Home Route */}
           <Route path="/" element={<Home />} />
-          <Route path="/tickets" element={<TicketPage />} />
+          <Route path="/tickets" element={<TicketPage />}>
+            <Route index element={<TicketListPage />} />
+            <Route path="list" element={<TicketListPage />} />
+            <Route path="new" element={<TicketCreatePage />} />
+            <Route path=":id" element={<TicketDetailPage />} />
+          </Route>
         </Routes>
       </BrowserRouter>
   );

@@ -1,12 +1,11 @@
-import React, { useState } from "react";
-import TicketForm from "./TicketForm";
-import TicketList from "./TicketList";
-import TicketDetail from "./TicketDetail";
+import React from "react";
+import { NavLink, Outlet } from "react-router-dom";
 
 const styles = `
   .ticket-page {
     display: flex;
-    gap: 24px;
+    flex-direction: column;
+    gap: 16px;
     padding: 24px;
     min-height: 100vh;
     background-color: #f5f7fa;
@@ -14,17 +13,33 @@ const styles = `
     box-sizing: border-box;
   }
 
-  .ticket-page__left {
-    flex: 1;
+  .ticket-page__tabs {
     display: flex;
-    flex-direction: column;
-    gap: 20px;
-    min-width: 0;
+    gap: 10px;
+    flex-wrap: wrap;
   }
 
-  .ticket-page__right {
-    flex: 1;
-    min-width: 0;
+  .ticket-page__tab {
+    border: 1px solid #cbd5e0;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #334155;
+    text-decoration: none;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.15s ease;
+  }
+
+  .ticket-page__tab:hover {
+    border-color: #667eea;
+    color: #4c51bf;
+  }
+
+  .ticket-page__tab--active {
+    background: #667eea;
+    border-color: #667eea;
+    color: #ffffff;
   }
 
   .ticket-page__panel {
@@ -47,35 +62,37 @@ const styles = `
 
   @media (max-width: 768px) {
     .ticket-page {
-      flex-direction: column;
       padding: 16px;
-      gap: 16px;
     }
   }
 `;
 
 function TicketPage() {
-  const [selectedTicketId, setSelectedTicketId] = useState(null);
-
   return (
     <>
       <style>{styles}</style>
       <div className="ticket-page">
-        <div className="ticket-page__left">
-          <div className="ticket-page__panel">
-            <h2 className="ticket-page__panel-title">New Ticket</h2>
-            <TicketForm />
-          </div>
-          <div className="ticket-page__panel">
-            <h2 className="ticket-page__panel-title">All Tickets</h2>
-            <TicketList onSelectTicket={setSelectedTicketId} />
-          </div>
+        <div className="ticket-page__tabs">
+          <NavLink
+            to="/tickets/list"
+            className={({ isActive }) =>
+              `ticket-page__tab ${isActive ? "ticket-page__tab--active" : ""}`
+            }
+          >
+            Ticket List
+          </NavLink>
+          <NavLink
+            to="/tickets/new"
+            className={({ isActive }) =>
+              `ticket-page__tab ${isActive ? "ticket-page__tab--active" : ""}`
+            }
+          >
+            New Ticket
+          </NavLink>
         </div>
-        <div className="ticket-page__right">
-          <div className="ticket-page__panel" style={{ height: "100%" }}>
-            <h2 className="ticket-page__panel-title">Ticket Detail</h2>
-            <TicketDetail ticketId={selectedTicketId} />
-          </div>
+
+        <div className="ticket-page__panel">
+          <Outlet />
         </div>
       </div>
     </>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getAllTickets } from "../../services/ticketService";
+import { useNavigate } from "react-router-dom";
 
 const styles = `
   .ticket-list {
@@ -158,6 +159,7 @@ const PRIORITY_LABELS = {
 };
 
 function TicketList({ onSelectTicket }) {
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
 
@@ -205,7 +207,13 @@ function TicketList({ onSelectTicket }) {
           <div
             key={ticket.id}
             className="ticket-card"
-            onClick={() => onSelectTicket(ticket.id)}
+            onClick={() => {
+              if (onSelectTicket) {
+                onSelectTicket(ticket.id);
+                return;
+              }
+              navigate(`/tickets/${ticket.id}`);
+            }}
           >
             <div className="ticket-card__header">
               <h4 className="ticket-card__title">{ticket.title}</h4>
