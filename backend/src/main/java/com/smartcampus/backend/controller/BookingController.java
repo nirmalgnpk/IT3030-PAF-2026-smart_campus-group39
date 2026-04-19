@@ -151,8 +151,7 @@ public class BookingController {
             if (booking.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
-            // TODO: Implement delete method in BookingService
-            // bookingService.deleteBooking(id);
+            bookingService.deleteBooking(id);
             return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

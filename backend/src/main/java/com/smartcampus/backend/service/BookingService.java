@@ -122,6 +122,13 @@ public class BookingService {
             .collect(Collectors.toList());
     }
 
+    public void deleteBooking(String id) {
+        Booking booking = bookingRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        bookingRepository.deleteById(id);
+    }
+
     private boolean hasTimeConflict(String newStart, String newEnd, 
                                    String existingStart, String existingEnd) {
         return newStart.compareTo(existingEnd) < 0 && newEnd.compareTo(existingStart) > 0;
