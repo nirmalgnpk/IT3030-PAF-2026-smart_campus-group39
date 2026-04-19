@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import ResourceList from './ResourceList';
 import { getAllResources } from '../../services/resourceService';
+import Navbar from "../../components/Navbar/Navbar";
+import { useAuth } from "../../AuthContext";
 
-/**
- * FacilitiesPage Component
- * Main page for browsing and managing campus facilities and assets
- */
-const FacilitiesPage = ({ isAdmin = false }) => {
+const FacilitiesPage = () => {
+  // Get current user from auth hook
+  const { currentUser } = useAuth();
+  
+  // Compute isAdmin from user's role
+  const isAdmin = currentUser?.role === 'ADMIN';
   const [resources, setResources] = useState([]);
   const [statsLoading, setStatsLoading] = useState(true);
   const [showAvailableModal, setShowAvailableModal] = useState(false);
@@ -67,6 +70,9 @@ const FacilitiesPage = ({ isAdmin = false }) => {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#FFFFFF' }}>
       <style>{scrollbarStyles}</style>
+
+      {/* Navbar */}
+      <Navbar />
 
       {/* ── Hero header ── */}
       <div style={{ backgroundColor: '#0B1F3A', position: 'relative', overflow: 'hidden', backgroundImage: 'url(/image/56.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
@@ -156,7 +162,7 @@ const FacilitiesPage = ({ isAdmin = false }) => {
                       {icon}
                     </svg>
                   </div>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', lineHeight: 'none', fontFamily: 'Syne, sans-serif' }}>{value}</div>
+                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', lineHeight: '1', fontFamily: 'Syne, sans-serif' }}>{value}</div>
                   <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.8)', marginTop: '0.125rem' }}>{label}</div>
                 </div>
               ))}
@@ -194,7 +200,7 @@ const FacilitiesPage = ({ isAdmin = false }) => {
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                     </svg>
                   </div>
-                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#C8963E', lineHeight: 'none', fontFamily: 'Syne, sans-serif' }}>Admin</div>
+                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#C8963E', lineHeight: '1', fontFamily: 'Syne, sans-serif' }}>Admin</div>
                   <div style={{ fontSize: '10px', fontWeight: '600', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(200,150,62,0.9)', marginTop: '0.125rem' }}>Mode</div>
                 </div>
               )}
@@ -205,7 +211,7 @@ const FacilitiesPage = ({ isAdmin = false }) => {
 
       {/* ── Main content ── */}
       <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '2rem 1rem' }}>
-        <ResourceList isAdmin={isAdmin} />
+        <ResourceList />
       </div>
 
       {/* ── Available Resources Modal ── */}

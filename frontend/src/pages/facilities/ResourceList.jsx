@@ -5,6 +5,7 @@ import ResourceFilter from './ResourceFilter';
 import ResourceForm from './ResourceForm';
 import ResourceDetailModal from './ResourceDetailModal';
 import { getAllResources, deleteResource } from '../../services/resourceService';
+import { useAuth } from '../../AuthContext';
 
 /**
  * ResourceList Component — Full Facilities Management Page
@@ -33,8 +34,14 @@ const Spinner = ({ size = 24, color = '#0B1F3A' }) => (
   </svg>
 );
 
-const ResourceList = ({ isAdmin = true }) => {
+const ResourceList = () => {
   const navigate = useNavigate();
+  
+  // Get current user from auth hook
+  const { currentUser } = useAuth();
+  
+  // Compute isAdmin from user's role
+  const isAdmin = currentUser?.role === 'ADMIN';
 
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
