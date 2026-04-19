@@ -7,6 +7,7 @@ import {
     rejectBooking,
     cancelBooking,
 } from '../../services/bookingService';
+import { useAuth } from '../../AuthContext';
 
 const BookingList = () => {
     const [bookings, setBookings] = useState([]);
@@ -19,7 +20,8 @@ const BookingList = () => {
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [cancelBookingId, setCancelBookingId] = useState(null);
 
-    const isAdmin = true;
+    const { currentUser } = useAuth();
+    const isAdmin = currentUser?.role === 'ADMIN';
 
     const fetchBookings = useCallback(async () => {
         setLoading(true);

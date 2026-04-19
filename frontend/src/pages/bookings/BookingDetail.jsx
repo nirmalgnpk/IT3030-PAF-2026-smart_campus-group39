@@ -6,10 +6,12 @@ import {
     rejectBooking,
     cancelBooking,
 } from '../../services/bookingService';
+import { useAuth } from '../../AuthContext';
 
 const BookingDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { currentUser } = useAuth();
     const [booking, setBooking] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -18,7 +20,8 @@ const BookingDetail = () => {
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [actionError, setActionError] = useState(null);
 
-    const isAdmin = true; // Will connect to auth later
+    // Check if current user is an admin
+    const isAdmin = currentUser?.role === 'ADMIN';
 
     const fetchBooking = useCallback(async () => {
         setLoading(true);
