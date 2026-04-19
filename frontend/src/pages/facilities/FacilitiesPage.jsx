@@ -1,8 +1,12 @@
 import React from 'react';
 import ResourceList from './ResourceList';
 import Navbar from "../../components/Navbar/Navbar";
+import { useAuth } from '../../AuthContext';
 
-const FacilitiesPage = ({ isAdmin = false }) => {
+const FacilitiesPage = () => {
+  const { currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'ADMIN';
+
   const stats = [
     { label: 'Total Rooms', value: '48' },
     { label: 'Available', value: '36' },

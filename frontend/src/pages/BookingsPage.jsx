@@ -3,6 +3,7 @@ import BookingList from './bookings/BookingList';
 import BookingForm from './bookings/BookingForm';
 import Navbar from "../components/Navbar/Navbar";
 import { getAllResources } from '../services/resourceService';
+import { useAuth } from '../AuthContext';
 
 const BookingsPage = () => {
   const [showBookingForm, setShowBookingForm] = useState(false);
@@ -10,6 +11,9 @@ const BookingsPage = () => {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const { currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'ADMIN';
 
   const stats = [
     { label: 'Total Bookings', value: '124' },
@@ -63,15 +67,17 @@ const BookingsPage = () => {
                 Booking <span style={{ color: '#C8963E' }}>Management</span>
               </h1>
               <p style={{ color: '#ccc', marginBottom: '0' }}>
-                View and manage all campus resource bookings
+                {isAdmin ? 'Review and manage all campus resource bookings' : 'View and manage all campus resource bookings'}
               </p>
             </div>
-            <button
-              onClick={() => setShowBookingForm(true)}
-              style={styles.btnNewBooking}
-            >
-              + Request Booking
-            </button>
+            {!isAdmin && (
+              <button
+                onClick={() => setShowBookingForm(true)}
+                style={styles.btnNewBooking}
+              >
+                + Request Booking
+              </button>
+            )}
           </div>
 
           {/* Stats */}
