@@ -21,9 +21,9 @@ function TicketDetailPage() {
   }
 
   return (
-    <div>
-      <Link to={backLink} style={{ display: "inline-block", marginBottom: 16, textDecoration: "none", color: "#3b82f6", fontWeight: "600" }}>
-        ← Back
+    <div style={{ maxWidth: 1000, margin: "0 auto", padding: "20px" }}>
+      <Link to={backLink} style={{ display: "inline-block", marginBottom: 20, textDecoration: "none", color: "#3b82f6", fontWeight: "600", fontSize: "15px", transition: "color 0.2s" }} onMouseOver={(e) => e.target.style.color = "#2563eb"} onMouseOut={(e) => e.target.style.color = "#3b82f6"}>
+        ← Back to Tickets
       </Link>
       <TicketDetail ticketId={id} />
     </div>
