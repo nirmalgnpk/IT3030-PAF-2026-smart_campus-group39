@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
-import axios from "axios";
+import api from "../../api";
 import {
   FiBell, FiUser, FiCalendar, FiLogOut, FiSettings,
   FiZap, FiCheck, FiTrash2, FiX, FiCheckCircle,
@@ -85,7 +85,7 @@ export default function Navbar() {
   const fetchUnread = useCallback(async () => {
     if (!userId) return;
     try {
-      const { data } = await axios.get(`/api/notifications/user/${userId}/unread-count`);
+      const { data } = await api.get(`/api/notifications/user/${userId}/unread-count`);
       setUnread(data.count || 0);
     } catch { /* silent */ }
   }, [userId]);
@@ -103,7 +103,7 @@ export default function Navbar() {
     if (!userId || notifOpen) return;
     setLoading(true);
     try {
-      const { data } = await axios.get(`/api/notifications/user/${userId}`);
+      const { data } = await api.get(`/api/notifications/user/${userId}`);
       setNotifs(data);
       setUnread(data.filter(n => !n.read).length);
     } catch { /* silent */ } finally { setLoading(false); }
@@ -111,7 +111,7 @@ export default function Navbar() {
 
   async function markRead(notifId) {
     try {
-      await axios.put(`/api/notifications/${notifId}/read`);
+      await api.put(`/api/notifications/${notifId}/read`);
       setNotifs(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
       setUnread(prev => Math.max(0, prev - 1));
     } catch { /* silent */ }
@@ -120,7 +120,7 @@ export default function Navbar() {
   async function markAllRead() {
     if (!userId) return;
     try {
-      await axios.put(`/api/notifications/user/${userId}/read-all`);
+      await api.put(`/api/notifications/user/${userId}/read-all`);
       setNotifs(prev => prev.map(n => ({ ...n, read: true })));
       setUnread(0);
     } catch { /* silent */ }
@@ -129,7 +129,7 @@ export default function Navbar() {
   async function deleteNotif(notifId, e) {
     e.stopPropagation();
     try {
-      await axios.delete(`/api/notifications/${notifId}`);
+      await api.delete(`/api/notifications/${notifId}`);
       setNotifs(prev => prev.filter(n => n.id !== notifId));
       setUnread(prev => {
         const was = notifs.find(n => n.id === notifId);
