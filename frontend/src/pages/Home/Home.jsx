@@ -477,6 +477,7 @@ const S = {
     flexWrap: "wrap", gap: 12,
     padding: "18px 5%",
     borderTop: "1px solid #1e293b",
+    
   },
   footerCopy:       { fontSize: 12, color: "#475569" },
   footerBottomLink: { fontSize: 12, color: "#475569", textDecoration: "none" },
