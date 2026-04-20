@@ -19,7 +19,7 @@ button:hover:not(:disabled) { opacity: 0.88; }
 @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 `;
 
-const BASE = "http://localhost:8082";
+const BASE = "http://localhost:8081";
 
 const ROLE_CONFIG = {
     USER:       { label: "Student",       bg: "#eff6ff", color: "#1d4ed8" },

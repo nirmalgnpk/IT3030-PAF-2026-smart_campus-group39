@@ -65,11 +65,14 @@ export default function Navbar() {
   const [notifs,    setNotifs]    = useState([]);
   const [unread,    setUnread]    = useState(0);
   const [loading,   setLoading]   = useState(false);
+  const [assignedTicketsCount, setAssignedTicketsCount] = useState(0);
 
   const menuRef  = useRef(null);
   const notifRef = useRef(null);
 
   const userId = currentUser?.id || currentUser?.userId;
+  const username = currentUser?.name || currentUser?.userName;
+  const isTechnician = currentUser?.role === "TECHNICIAN";
 
   // ── Close on outside click ─────────────────────────────────────────────────
   useEffect(() => {
@@ -87,8 +90,15 @@ export default function Navbar() {
     try {
       const { data } = await api.get(`/api/notifications/user/${userId}/unread-count`);
       setUnread(data.count || 0);
+
+      // Also fetch assigned tickets for technician dot
+      if (isTechnician && username) {
+        const tixData = await api.get(`/api/tickets?assignedTechnician=${username}`);
+        const activeTix = tixData.data.filter(t => t.status !== "CLOSED" && t.status !== "RESOLVED");
+        setAssignedTicketsCount(activeTix.length);
+      }
     } catch { /* silent */ }
-  }, [userId]);
+  }, [userId, isTechnician, username]);
 
   useEffect(() => {
     fetchUnread();
@@ -153,9 +163,17 @@ export default function Navbar() {
         <ul style={S.links}>
           {NAV_LINKS.map(({ to, label }) => (
               <li key={to}>
-                <Link to={to} style={{ ...S.link, ...(isActive(to) ? S.linkActive : {}) }}>
+                <Link to={to} style={{ ...S.link, ...(isActive(to) ? S.linkActive : {}), position: "relative" }}>
                   {label}
                   {isActive(to) && <span style={S.linkDot} />}
+                  {to === "/tickets" && isTechnician && assignedTicketsCount > 0 && (
+                      <span style={{
+                        position: "absolute",
+                        top: -2, right: -8,
+                        width: 8, height: 8,
+                        backgroundColor: "#ef4444", borderRadius: "50%"
+                      }} />
+                  )}
                 </Link>
               </li>
           ))}
