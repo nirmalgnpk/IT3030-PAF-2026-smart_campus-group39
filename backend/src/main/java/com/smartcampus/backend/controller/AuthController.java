@@ -33,19 +33,16 @@ public class AuthController {
     @Autowired private JwtService      jwtService;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private OtpService      otpService;
-    @Autowired(required = false) private EmailService    emailService;
+    @Autowired(required = false) private EmailService emailService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
 
-    // Pending registrations: email → form data (password already encoded)
     private final Map<String, Map<String, String>> pendingRegistrations = new ConcurrentHashMap<>();
-
-    // Short-lived reset tokens: email → UUID  (consumed after /forgot-password/reset)
     private final Map<String, String> resetTokens = new ConcurrentHashMap<>();
 
     // =========================================================================
-    //  REGISTRATION — Step 1: validate, store pending, send OTP
+    //  REGISTRATION — Step 1
     // =========================================================================
 
     @PostMapping("/send-register-otp")
@@ -100,7 +97,7 @@ public class AuthController {
     }
 
     // =========================================================================
-    //  REGISTRATION — Step 2: verify OTP, save user, return JWT
+    //  REGISTRATION — Step 2
     // =========================================================================
 
     @PostMapping("/verify-register-otp")
@@ -301,7 +298,7 @@ public class AuthController {
     }
 
     // =========================================================================
-    //  FORGOT PASSWORD — Step 1: send OTP
+    //  FORGOT PASSWORD
     // =========================================================================
 
     @PostMapping("/forgot-password/send-otp")
@@ -326,10 +323,6 @@ public class AuthController {
 
         return ResponseEntity.ok(Map.of("message", "OTP sent to " + normalizedEmail));
     }
-
-    // =========================================================================
-    //  FORGOT PASSWORD — Step 2: verify OTP, issue reset token
-    // =========================================================================
 
     @PostMapping("/forgot-password/verify-otp")
     public ResponseEntity<Map<String, Object>> forgotPasswordVerifyOtp(@RequestBody Map<String, String> body) {
@@ -356,10 +349,6 @@ public class AuthController {
         resp.put("message",    "OTP verified. You may now reset your password.");
         return ResponseEntity.ok(resp);
     }
-
-    // =========================================================================
-    //  FORGOT PASSWORD — Step 3: set new password
-    // =========================================================================
 
     @PostMapping("/forgot-password/reset")
     public ResponseEntity<Map<String, Object>> forgotPasswordReset(@RequestBody Map<String, String> body) {
@@ -399,7 +388,7 @@ public class AuthController {
     }
 
     // =========================================================================
-    //  Legacy stubs — kept for backward compatibility
+    //  Legacy stubs
     // =========================================================================
 
     @Deprecated
