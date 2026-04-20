@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import axios from "axios";
+import api from "./api";
 
 const AuthContext = createContext(null);
 
@@ -22,10 +22,7 @@ export function AuthProvider({ children }) {
         const token = localStorage.getItem("sc_token");
 
         if (token) {
-            // Set the global axios header immediately so verify call includes it
-            axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-            axios.get("/api/auth/verify")
+            api.get("/api/auth/verify")
                 .then(({ data }) => {
                     if (data.valid) {
                         setCurrentUser(normalizeUser({
@@ -55,7 +52,6 @@ export function AuthProvider({ children }) {
 
         if (token) {
             localStorage.setItem("sc_token", token);
-            axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
         }
 
         const normalized = normalizeUser(userData, token);
@@ -64,14 +60,13 @@ export function AuthProvider({ children }) {
 
     // ── logout ────────────────────────────────────────────────────────────────
     const logout = () => {
-        axios.post("/api/auth/logout").catch(() => {});
+        api.post("/api/auth/logout").catch(() => {});
         clearAuth();
     };
 
     // ── clearAuth ─────────────────────────────────────────────────────────────
     const clearAuth = () => {
         localStorage.removeItem("sc_token");
-        delete axios.defaults.headers.common["Authorization"];
         setCurrentUser(null);
     };
 
