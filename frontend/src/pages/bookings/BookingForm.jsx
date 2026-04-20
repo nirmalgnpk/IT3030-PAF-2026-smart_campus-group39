@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { createBooking } from '../../services/bookingService';
 import { getResourceById } from '../../services/resourceService';
+import { useAuth } from '../../AuthContext';
 
 const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
+    const { currentUser } = useAuth();
     const [formData, setFormData] = useState({
         date: '',
         startTime: '',
@@ -21,6 +23,18 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
     const [resourceLoading, setResourceLoading] = useState(true);
     // eslint-disable-next-line no-unused-vars
     const [resourceError, setResourceError] = useState(null);
+
+    // Auto-populate user information from AuthContext on component mount
+    useEffect(() => {
+        if (currentUser) {
+            setFormData(prev => ({
+                ...prev,
+                userName: currentUser.name || '',
+                userEmail: currentUser.email || '',
+                userId: currentUser.id || currentUser.userId || '',
+            }));
+        }
+    }, [currentUser]);
 
     // Fetch resource details when component mounts or resourceId changes
     useEffect(() => {
@@ -191,7 +205,8 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
                                 value={formData.userName}
                                 onChange={handleInputChange}
                                 placeholder="Your full name"
-                                style={styles.input}
+                                style={styles.readOnlyInput}
+                                readOnly
                                 required
                             />
                         </div>
@@ -203,7 +218,8 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
                                 value={formData.userEmail}
                                 onChange={handleInputChange}
                                 placeholder="your.email@example.com"
-                                style={styles.input}
+                                style={styles.readOnlyInput}
+                                readOnly
                                 required
                             />
                         </div>
@@ -215,7 +231,8 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
                                 value={formData.userId}
                                 onChange={handleInputChange}
                                 placeholder="Your user ID"
-                                style={styles.input}
+                                style={styles.readOnlyInput}
+                                readOnly
                                 required
                             />
                         </div>
@@ -363,6 +380,17 @@ const styles = {
         backgroundColor: 'white',
         outline: 'none',
         fontFamily: 'inherit',
+    },
+    readOnlyInput: {
+        padding: '11px 12px',
+        border: '1px solid #ddd',
+        borderRadius: '8px',
+        fontSize: '13px',
+        color: '#0B1F3A',
+        backgroundColor: '#f5f5f5',
+        outline: 'none',
+        fontFamily: 'inherit',
+        cursor: 'not-allowed',
     },
     textarea: {
         padding: '11px 12px',
