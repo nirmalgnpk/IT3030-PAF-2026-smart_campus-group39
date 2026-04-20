@@ -1,4 +1,5 @@
 import api from '../api';
+const API_BASE_URL = 'http://localhost:8082/api/resources';
 
 const API_BASE_URL = '/api/resources';
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
 import api from "../../api";
 import {
@@ -8,6 +8,7 @@ import {
     FiTrash2, FiX, FiCheck, FiSend, FiAlertTriangle,
     FiGift, FiCalendar, FiAlertCircle, FiBookOpen,
     FiZap, FiInfo, FiCheckCircle, FiUserCheck, FiUserX,
+    FiUserPlus,
 } from "react-icons/fi";
 import {
     BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
@@ -45,7 +46,7 @@ function StatusBadge({ enabled }) {
 function Avatar({ user, size = 36 }) {
     const ini = (user.name || user.userName || "?").trim().split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
     const colors = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#ef4444"];
-    const color = colors[(user.email || "").charCodeAt(0) % colors.length];
+    const color  = colors[(user.email || "").charCodeAt(0) % colors.length];
     return user.profilePhotoUrl ? (
         <img src={user.profilePhotoUrl} alt={user.name} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover" }} />
     ) : (
@@ -68,7 +69,7 @@ function NotifIcon({ type }) {
 function timeAgo(dateStr) {
     const diff = Date.now() - new Date(dateStr).getTime();
     const m = Math.floor(diff / 60000);
-    if (m < 1) return "Just now";
+    if (m < 1)  return "Just now";
     if (m < 60) return `${m}m ago`;
     const h = Math.floor(m / 60);
     if (h < 24) return `${h}h ago`;
@@ -77,10 +78,14 @@ function timeAgo(dateStr) {
 
 const PIE_COLORS = ["#3b82f6", "#22c55e", "#a855f7", "#f59e0b", "#ef4444"];
 
+const EMPTY_NEW_USER = { name: "", userName: "", email: "", password: "" };
+
 /* ── Main component ───────────────────────────────────────────────────────── */
 export default function AdminDashboard() {
     const { currentUser, logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const isTicketsPath = location.pathname.startsWith('/admin/tickets');
 
     const [users,        setUsers]        = useState([]);
     const [stats,        setStats]        = useState(null);
@@ -96,10 +101,11 @@ export default function AdminDashboard() {
     const [activeTab,    setActiveTab]    = useState("users");
 
     const adminId = currentUser?.id || currentUser?.userId;
-    const [notifOpen,  setNotifOpen]  = useState(false);
-    const [notifs,     setNotifs]     = useState([]);
-    const [unread,     setUnread]     = useState(0);
-    const [notifLoad,  setNotifLoad]  = useState(false);
+
+    const [notifOpen, setNotifOpen] = useState(false);
+    const [notifs,    setNotifs]    = useState([]);
+    const [unread,    setUnread]    = useState(0);
+    const [notifLoad, setNotifLoad] = useState(false);
     const notifRef = useRef(null);
 
     const [sendPanel,     setSendPanel]     = useState(false);
@@ -107,14 +113,33 @@ export default function AdminDashboard() {
     const [sendLoading,   setSendLoading]   = useState(false);
     const [broadcastMode, setBroadcastMode] = useState(false);
 
+    // ── Add User modals
+    const [addAdminOpen,      setAddAdminOpen]      = useState(false);
+    const [addTechOpen,       setAddTechOpen]        = useState(false);
+    const [newUserForm,       setNewUserForm]        = useState(EMPTY_NEW_USER);
+    const [newUserErrors,     setNewUserErrors]      = useState({});
+    const [newUserLoading,    setNewUserLoading]     = useState(false);
+    const [newUserServerErr,  setNewUserServerErr]   = useState("");
+    const [newUserPwVisible,  setNewUserPwVisible]   = useState(false);
+
     useEffect(() => {
-        if (currentUser && currentUser.role !== "ADMIN") { navigate("/"); return; }
-        fetchUsers();
-        fetchStats();
+        if (!currentUser) return;
+        if (currentUser.role === "TECHNICIAN" && !isTicketsPath) {
+             navigate("/admin/tickets/list"); 
+             return;
+        }
+        if (currentUser.role !== "ADMIN" && currentUser.role !== "TECHNICIAN") { 
+             navigate("/"); 
+             return; 
+        }
+        if (currentUser.role === "ADMIN") {
+            fetchUsers();
+            fetchStats();
+        }
         fetchAdminUnread();
         const iv = setInterval(fetchAdminUnread, 30000);
         return () => clearInterval(iv);
-    }, []);
+    }, [currentUser, isTicketsPath, navigate]);
 
     useEffect(() => {
         const handler = e => {
@@ -210,9 +235,8 @@ export default function AdminDashboard() {
             fetchStats();
             showToast(`User ${!user.enabled ? "enabled" : "disabled"}`);
             await api.post("/api/notifications", {
-                userId: user.id,
-                type: "SYSTEM",
-                title: !user.enabled ? "Account Enabled" : "Account Disabled",
+                userId: user.id, type: "SYSTEM",
+                title:   !user.enabled ? "Account Enabled" : "Account Disabled",
                 message: !user.enabled
                     ? "Your account has been re-enabled by an administrator."
                     : "Your account has been disabled by an administrator. Contact support.",
@@ -239,9 +263,7 @@ export default function AdminDashboard() {
         setSendLoading(true);
         try {
             if (broadcastMode) {
-                await api.post("/api/notifications/broadcast", {
-                    title: sendForm.title, message: sendForm.message,
-                });
+                await api.post("/api/notifications/broadcast", { title: sendForm.title, message: sendForm.message });
                 showToast("Broadcast sent to all users");
             } else {
                 await api.post("/api/notifications", {
@@ -254,6 +276,61 @@ export default function AdminDashboard() {
             setSendPanel(false);
         } catch { showToast("Failed to send notification", "error"); }
         finally { setSendLoading(false); }
+    }
+
+    // ── Add Admin / Technician ────────────────────────────────────────────────
+    function openAddModal(role) {
+        setNewUserForm(EMPTY_NEW_USER);
+        setNewUserErrors({});
+        setNewUserServerErr("");
+        setNewUserPwVisible(false);
+        if (role === "ADMIN")      setAddAdminOpen(true);
+        else                       setAddTechOpen(true);
+    }
+
+    function closeAddModals() {
+        setAddAdminOpen(false);
+        setAddTechOpen(false);
+    }
+
+    function validateNewUser() {
+        const e = {};
+        if (!newUserForm.name.trim())     e.name     = "Full name is required.";
+        if (!newUserForm.userName.trim()) e.userName = "Username is required.";
+        if (!newUserForm.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newUserForm.email))
+            e.email = "A valid email is required.";
+        if (!newUserForm.password || newUserForm.password.length < 8)
+            e.password = "Password must be at least 8 characters.";
+        return e;
+    }
+
+    async function handleAddUser(role) {
+        setNewUserServerErr("");
+        const errs = validateNewUser();
+        setNewUserErrors(errs);
+        if (Object.keys(errs).length) return;
+        setNewUserLoading(true);
+        try {
+            // Use the send-register-otp + verify flow OR a direct admin creation endpoint.
+            // Here we call the existing /api/auth/send-register-otp then auto-verify isn't
+            // possible without OTP — so we hit a dedicated admin endpoint instead.
+            // If your backend doesn't have one yet, use the fallback below.
+            const { data } = await api.post("/api/users/create", {
+                name:     newUserForm.name.trim(),
+                userName: newUserForm.userName.trim(),
+                email:    newUserForm.email.trim().toLowerCase(),
+                password: newUserForm.password,
+                role,
+            });
+            setUsers(prev => [...prev, data]);
+            fetchStats();
+            closeAddModals();
+            showToast(`${role === "ADMIN" ? "Admin" : "Technician"} account created`);
+        } catch (err) {
+            setNewUserServerErr(err.response?.data?.message || "Failed to create account. Please try again.");
+        } finally {
+            setNewUserLoading(false);
+        }
     }
 
     /* ── Derived ── */
@@ -275,10 +352,10 @@ export default function AdminDashboard() {
     };
 
     const roleChartData = [
-        { name: "Students",   value: stats?.students    ?? localStats.students    },
-        { name: "Technicians",value: stats?.technicians ?? localStats.technicians },
-        { name: "Managers",   value: stats?.managers    ?? localStats.managers    },
-        { name: "Admins",     value: stats?.admins      ?? localStats.admins      },
+        { name: "Students",    value: stats?.students    ?? localStats.students    },
+        { name: "Technicians", value: stats?.technicians ?? localStats.technicians },
+        { name: "Managers",    value: stats?.managers    ?? localStats.managers    },
+        { name: "Admins",      value: stats?.admins      ?? localStats.admins      },
     ].filter(d => d.value > 0);
 
     const statusChartData = [
@@ -295,6 +372,108 @@ export default function AdminDashboard() {
         ? Object.entries(stats.registrationsByMonth).map(([month, count]) => ({ month, count }))
         : [];
 
+    /* ── Add User Form (shared for Admin & Technician) ── */
+    function AddUserModal({ role, open, onClose }) {
+        if (!open) return null;
+        const accentColor = role === "ADMIN" ? "#92400e" : "#15803d";
+        const accentBg    = role === "ADMIN" ? "#fef3c7" : "#dcfce7";
+        const label       = role === "ADMIN" ? "Administrator" : "Technician";
+
+        return (
+            <div style={S.overlay} onClick={onClose}>
+                <div style={{ ...S.modal, maxWidth: 460 }} onClick={e => e.stopPropagation()}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+                        <h2 style={S.modalTitle}>
+                            <span style={{ background: accentBg, color: accentColor, padding: "4px 10px", borderRadius: 8, fontSize: 13, fontWeight: 700, marginRight: 10 }}>
+                                {label}
+                            </span>
+                            Add New {label}
+                        </h2>
+                        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer" }}>
+                            <FiX size={18} color="#94a3b8" />
+                        </button>
+                    </div>
+
+                    {newUserServerErr && (
+                        <div style={{ background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#dc2626", marginBottom: "1rem", display: "flex", alignItems: "center", gap: 8 }}>
+                            <FiAlertTriangle size={14} /> {newUserServerErr}
+                        </div>
+                    )}
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                        {/* Name */}
+                        <div>
+                            <label style={S.modalLabel}>Full Name</label>
+                            <input
+                                style={{ ...S.modalInput, ...(newUserErrors.name ? { borderColor: "#f87171" } : {}) }}
+                                placeholder="Jane Doe"
+                                value={newUserForm.name}
+                                onChange={e => { setNewUserForm(p => ({ ...p, name: e.target.value })); setNewUserErrors(p => ({ ...p, name: null })); }}
+                            />
+                            {newUserErrors.name && <p style={{ fontSize: 12, color: "#dc2626", marginTop: 3 }}>{newUserErrors.name}</p>}
+                        </div>
+                        {/* Username */}
+                        <div>
+                            <label style={S.modalLabel}>Username</label>
+                            <input
+                                style={{ ...S.modalInput, ...(newUserErrors.userName ? { borderColor: "#f87171" } : {}) }}
+                                placeholder="janedoe"
+                                value={newUserForm.userName}
+                                onChange={e => { setNewUserForm(p => ({ ...p, userName: e.target.value })); setNewUserErrors(p => ({ ...p, userName: null })); }}
+                            />
+                            {newUserErrors.userName && <p style={{ fontSize: 12, color: "#dc2626", marginTop: 3 }}>{newUserErrors.userName}</p>}
+                        </div>
+                        {/* Email */}
+                        <div>
+                            <label style={S.modalLabel}>Email Address</label>
+                            <input
+                                style={{ ...S.modalInput, ...(newUserErrors.email ? { borderColor: "#f87171" } : {}) }}
+                                type="email"
+                                placeholder="jane@example.com"
+                                value={newUserForm.email}
+                                onChange={e => { setNewUserForm(p => ({ ...p, email: e.target.value })); setNewUserErrors(p => ({ ...p, email: null })); }}
+                            />
+                            {newUserErrors.email && <p style={{ fontSize: 12, color: "#dc2626", marginTop: 3 }}>{newUserErrors.email}</p>}
+                        </div>
+                        {/* Password */}
+                        <div>
+                            <label style={S.modalLabel}>Password</label>
+                            <div style={{ position: "relative" }}>
+                                <input
+                                    type={newUserPwVisible ? "text" : "password"}
+                                    style={{ ...S.modalInput, paddingRight: 38, ...(newUserErrors.password ? { borderColor: "#f87171" } : {}) }}
+                                    placeholder="Min. 8 characters"
+                                    value={newUserForm.password}
+                                    onChange={e => { setNewUserForm(p => ({ ...p, password: e.target.value })); setNewUserErrors(p => ({ ...p, password: null })); }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setNewUserPwVisible(v => !v)}
+                                    style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" }}
+                                >
+                                    <FiCheckCircle size={14} color={newUserPwVisible ? "#3b82f6" : "#94a3b8"} />
+                                </button>
+                            </div>
+                            {newUserErrors.password && <p style={{ fontSize: 12, color: "#dc2626", marginTop: 3 }}>{newUserErrors.password}</p>}
+                        </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 10, marginTop: "1.5rem", justifyContent: "flex-end" }}>
+                        <button onClick={onClose} style={S.modalCancelBtn}>Cancel</button>
+                        <button
+                            onClick={() => handleAddUser(role)}
+                            disabled={newUserLoading}
+                            style={{ ...S.modalSaveBtn, background: role === "ADMIN" ? "#92400e" : "#15803d", display: "flex", alignItems: "center", gap: 6 }}
+                        >
+                            <FiUserPlus size={13} />
+                            {newUserLoading ? "Creating…" : `Create ${label}`}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     /* ── Render ── */
     return (
         <div style={S.page}>
@@ -309,15 +488,22 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                     <nav style={{ marginTop: "2rem" }}>
-                        {[
+                        {currentUser?.role === "ADMIN" && [
                             { id: "users",    icon: <FiUsers size={15} />,     label: "Users"    },
                             { id: "overview", icon: <FiBarChart2 size={15} />, label: "Overview" },
                         ].map(item => (
-                            <button key={item.id} onClick={() => setActiveTab(item.id)}
-                                    style={{ ...S.navItem, ...(activeTab === item.id ? S.navItemActive : {}) }}>
+                            <button key={item.id} onClick={() => { navigate("/admin/dashboard"); setActiveTab(item.id); }}
+                                    style={{ ...S.navItem, ...(!isTicketsPath && activeTab === item.id ? S.navItemActive : {}) }}>
                                 {item.icon}<span>{item.label}</span>
                             </button>
                         ))}
+                        
+                        {(currentUser?.role === "ADMIN" || currentUser?.role === "TECHNICIAN") && (
+                            <button onClick={() => navigate("/admin/tickets/list")} 
+                                    style={{ ...S.navItem, ...(isTicketsPath ? S.navItemActive : {}) }}>
+                                <FiAlertCircle size={15} /><span>Tickets</span>
+                            </button>
+                        )}
                         <div style={{ borderTop: "1px solid #1e293b", margin: "1rem 0" }} />
                         <Link to="/" style={{ ...S.navItem, textDecoration: "none", display: "flex", gap: 10 }}>
                             <FiHome size={15} /><span>Main App</span>
@@ -343,17 +529,31 @@ export default function AdminDashboard() {
                 {/* Header */}
                 <header style={S.header}>
                     <div>
-                        <h1 style={S.pageTitle}>{activeTab === "users" ? "User Management" : "Platform Overview"}</h1>
-                        <p style={S.pageSubtitle}>
-                            {activeTab === "users"
-                                ? `${filtered.length} of ${users.length} users`
-                                : `${localStats.total} total users · ${localStats.active} active`}
-                        </p>
+                        <h1 style={S.pageTitle}>
+                            {isTicketsPath ? "Ticket Management" : (activeTab === "users" ? "User Management" : "Platform Overview")}
+                        </h1>
+                        {!isTicketsPath && (
+                            <p style={S.pageSubtitle}>
+                                {activeTab === "users"
+                                    ? `${filtered.length} of ${users.length} users`
+                                    : `${localStats.total} total users · ${localStats.active} active`}
+                            </p>
+                        )}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {/* Add Admin */}
+                        <button onClick={() => openAddModal("ADMIN")} style={{ ...S.actionHeaderBtn, background: "#92400e" }}>
+                            <FiUserPlus size={14} /> Add Admin
+                        </button>
+                        {/* Add Technician */}
+                        <button onClick={() => openAddModal("TECHNICIAN")} style={{ ...S.actionHeaderBtn, background: "#15803d" }}>
+                            <FiUserPlus size={14} /> Add Technician
+                        </button>
+                        {/* Send Notification */}
                         <button onClick={() => setSendPanel(true)} style={S.actionHeaderBtn}>
                             <FiSend size={14} /> Send Notification
                         </button>
+                        {/* Bell */}
                         <div style={{ position: "relative" }} ref={notifRef}>
                             <button style={S.bellBtn} onClick={openNotifPanel} title="My Notifications">
                                 <FiBell size={16} color="#64748b" />
@@ -399,16 +599,20 @@ export default function AdminDashboard() {
                     </div>
                 </header>
 
-                {/* Stats Cards — always visible */}
-                <div style={S.statsGrid}>
+                {isTicketsPath ? (
+                    <Outlet />
+                ) : (
+                    <>
+                        {/* Stats Cards */}
+                        <div style={S.statsGrid}>
                     {[
-                        { label: "Total Users",  value: localStats.total,                       icon: <FiUsers size={16} />,      color: "#3b82f6", bg: "#eff6ff" },
-                        { label: "Students",     value: localStats.students,                    icon: "🎓",                        color: "#1d4ed8", bg: "#dbeafe" },
-                        { label: "Technicians",  value: localStats.technicians,                 icon: "🔧",                        color: "#15803d", bg: "#dcfce7" },
-                        { label: "Managers",     value: localStats.managers,                    icon: "📋",                        color: "#7e22ce", bg: "#faf5ff" },
-                        { label: "Admins",       value: localStats.admins,                      icon: <FiZap size={16} />,         color: "#92400e", bg: "#fef3c7" },
-                        { label: "Active",       value: localStats.active,                      icon: <FiUserCheck size={16} />,  color: "#059669", bg: "#d1fae5" },
-                        { label: "Disabled",     value: localStats.total - localStats.active,   icon: <FiUserX size={16} />,      color: "#dc2626", bg: "#fee2e2" },
+                        { label: "Total Users",  value: localStats.total,                     icon: <FiUsers size={16} />,     color: "#3b82f6", bg: "#eff6ff" },
+                        { label: "Students",     value: localStats.students,                  icon: "🎓",                       color: "#1d4ed8", bg: "#dbeafe" },
+                        { label: "Technicians",  value: localStats.technicians,               icon: "🔧",                       color: "#15803d", bg: "#dcfce7" },
+                        { label: "Managers",     value: localStats.managers,                  icon: "📋",                       color: "#7e22ce", bg: "#faf5ff" },
+                        { label: "Admins",       value: localStats.admins,                    icon: <FiZap size={16} />,        color: "#92400e", bg: "#fef3c7" },
+                        { label: "Active",       value: localStats.active,                    icon: <FiUserCheck size={16} />, color: "#059669", bg: "#d1fae5" },
+                        { label: "Disabled",     value: localStats.total - localStats.active, icon: <FiUserX size={16} />,     color: "#dc2626", bg: "#fee2e2" },
                     ].map(s => (
                         <div key={s.label} style={S.statCard}>
                             <div style={{ ...S.statIcon, background: s.bg, color: s.color }}>{s.icon}</div>
@@ -419,7 +623,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* ── USERS TAB ── */}
-                {activeTab === "users" && (
+                {activeTab === "users" && currentUser?.role === "ADMIN" && (
                     <>
                         <div style={S.filterBar}>
                             <div style={S.searchWrap}>
@@ -503,7 +707,6 @@ export default function AdminDashboard() {
                             <div style={{ padding: "3rem", textAlign: "center", color: "#94a3b8", fontSize: 14 }}>Loading analytics…</div>
                         ) : (
                             <>
-                                {/* Row 1: Role breakdown + Status + Provider */}
                                 <div style={S.chartRow}>
                                     <div style={S.chartCard}>
                                         <h3 style={S.chartTitle}>Users by Role</h3>
@@ -521,7 +724,6 @@ export default function AdminDashboard() {
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </div>
-
                                     <div style={S.chartCard}>
                                         <h3 style={S.chartTitle}>Account Status</h3>
                                         <ResponsiveContainer width="100%" height={220}>
@@ -530,23 +732,19 @@ export default function AdminDashboard() {
                                                      dataKey="value" nameKey="name"
                                                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                                                      labelLine={false}>
-                                                    <Cell fill="#22c55e" />
-                                                    <Cell fill="#ef4444" />
+                                                    <Cell fill="#22c55e" /><Cell fill="#ef4444" />
                                                 </Pie>
                                                 <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }} />
                                                 <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
                                             </PieChart>
                                         </ResponsiveContainer>
                                     </div>
-
                                     <div style={S.chartCard}>
                                         <h3 style={S.chartTitle}>Login Provider</h3>
                                         <ResponsiveContainer width="100%" height={220}>
                                             <PieChart>
-                                                <Pie data={providerChartData} cx="50%" cy="50%" innerRadius={50} outerRadius={80}
-                                                     dataKey="value" nameKey="name">
-                                                    <Cell fill="#3b82f6" />
-                                                    <Cell fill="#f59e0b" />
+                                                <Pie data={providerChartData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" nameKey="name">
+                                                    <Cell fill="#3b82f6" /><Cell fill="#f59e0b" />
                                                 </Pie>
                                                 <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }} />
                                                 <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
@@ -554,8 +752,6 @@ export default function AdminDashboard() {
                                         </ResponsiveContainer>
                                     </div>
                                 </div>
-
-                                {/* Row 2: Registrations over time */}
                                 {monthlyData.length > 0 && (
                                     <div style={{ ...S.chartCard, width: "100%" }}>
                                         <h3 style={S.chartTitle}>Registrations Over Time</h3>
@@ -570,8 +766,6 @@ export default function AdminDashboard() {
                                         </ResponsiveContainer>
                                     </div>
                                 )}
-
-                                {/* Row 3: Recently joined */}
                                 <div style={S.chartCard}>
                                     <h3 style={S.chartTitle}>Recently Joined Users</h3>
                                     <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
@@ -597,7 +791,14 @@ export default function AdminDashboard() {
                         )}
                     </div>
                 )}
+                </>
+                )}
             </main>
+
+            {/* ── Add Admin Modal ── */}
+            <AddUserModal role="ADMIN"       open={addAdminOpen} onClose={closeAddModals} />
+            {/* ── Add Technician Modal ── */}
+            <AddUserModal role="TECHNICIAN"  open={addTechOpen}  onClose={closeAddModals} />
 
             {/* ── Send Notification Panel ── */}
             {sendPanel && (
@@ -739,48 +940,48 @@ export default function AdminDashboard() {
 
 /* ── Styles ── */
 const S = {
-    page:         { display: "flex", minHeight: "100vh", background: "#f1f5f9", fontFamily: "'DM Sans','Segoe UI',sans-serif" },
-    sidebar:      { width: 220, background: "#0f172a", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "1.5rem 1rem", position: "sticky", top: 0, height: "100vh", flexShrink: 0 },
-    sidebarTop:   { flex: 1 },
-    sideLogoRow:  { display: "flex", alignItems: "center", gap: 10 },
-    sideLogo:     { width: 36, height: 36, borderRadius: 9, background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff" },
-    sideLogoText: { fontSize: 14, fontWeight: 700, color: "#f1f5f9" },
-    navItem:      { display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 8, border: "none", background: "transparent", color: "#94a3b8", fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left", fontFamily: "inherit", marginBottom: 2 },
-    navItemActive:{ background: "#1e293b", color: "#f1f5f9" },
-    sideAdminCard:{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#1e293b", borderRadius: 10 },
-    main:         { flex: 1, padding: "2rem", overflow: "auto" },
-    header:       { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.75rem" },
-    pageTitle:    { fontSize: 24, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.5px" },
-    pageSubtitle: { fontSize: 14, color: "#64748b", marginTop: 3 },
+    page:            { display: "flex", minHeight: "100vh", background: "#f1f5f9", fontFamily: "'DM Sans','Segoe UI',sans-serif" },
+    sidebar:         { width: 220, background: "#0f172a", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "1.5rem 1rem", position: "sticky", top: 0, height: "100vh", flexShrink: 0 },
+    sidebarTop:      { flex: 1 },
+    sideLogoRow:     { display: "flex", alignItems: "center", gap: 10 },
+    sideLogo:        { width: 36, height: 36, borderRadius: 9, background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff" },
+    sideLogoText:    { fontSize: 14, fontWeight: 700, color: "#f1f5f9" },
+    navItem:         { display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 8, border: "none", background: "transparent", color: "#94a3b8", fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left", fontFamily: "inherit", marginBottom: 2 },
+    navItemActive:   { background: "#1e293b", color: "#f1f5f9" },
+    sideAdminCard:   { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#1e293b", borderRadius: 10 },
+    main:            { flex: 1, padding: "2rem", overflow: "auto" },
+    header:          { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.75rem" },
+    pageTitle:       { fontSize: 24, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.5px" },
+    pageSubtitle:    { fontSize: 14, color: "#64748b", marginTop: 3 },
     actionHeaderBtn: { display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "none", background: "#3b82f6", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" },
-    bellBtn:      { width: 36, height: 36, borderRadius: "50%", background: "#fff", border: "1px solid #e2e8f0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" },
-    badge:        { position: "absolute", top: -3, right: -3, background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 700, padding: "1px 4px", borderRadius: 8, border: "2px solid #f1f5f9", minWidth: 16, textAlign: "center" },
-    notifPanel:   { position: "absolute", top: 44, width: 320, background: "#fff", border: "1px solid #e8edf2", borderRadius: 14, boxShadow: "0 12px 40px rgba(0,0,0,0.12)", overflow: "hidden", zIndex: 400 },
-    notifHeader:  { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid #f1f5f9" },
-    smBtn:        { display: "flex", alignItems: "center", gap: 3, padding: "3px 8px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", fontSize: 11, color: "#64748b", cursor: "pointer" },
-    statsGrid:    { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px,1fr))", gap: 12, marginBottom: "1.75rem" },
-    statCard:     { background: "#fff", borderRadius: 14, padding: "1rem 1.25rem", boxShadow: "0 1px 6px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: 4, border: "1px solid #e8edf2" },
-    statIcon:     { width: 34, height: 34, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, marginBottom: 4 },
-    statVal:      { fontSize: 26, fontWeight: 700, color: "#0f172a", letterSpacing: "-1px" },
-    statLabel:    { fontSize: 12, color: "#64748b", fontWeight: 500 },
-    filterBar:    { display: "flex", gap: 12, marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" },
-    searchWrap:   { position: "relative", flex: "1 1 240px", minWidth: 200 },
-    searchInput:  { width: "100%", padding: "9px 12px 9px 34px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 14, color: "#0f172a", outline: "none", fontFamily: "inherit", background: "#fff", boxSizing: "border-box" },
-    roleFilters:  { display: "flex", gap: 6, flexWrap: "wrap" },
-    filterChip:       { padding: "5px 12px", borderRadius: 20, border: "1.5px solid #e2e8f0", background: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#64748b", fontFamily: "inherit" },
-    filterChipActive: { background: "#1e293b", color: "#fff", border: "1.5px solid #1e293b" },
-    tableWrap:    { background: "#fff", borderRadius: 14, border: "1px solid #e8edf2", overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" },
-    table:        { width: "100%", borderCollapse: "collapse" },
-    th:           { padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #f1f5f9", background: "#f8fafc" },
-    tr:           { transition: "background 0.1s" },
-    td:           { padding: "12px 16px", borderBottom: "1px solid #f1f5f9" },
-    actionBtn:    { padding: "5px 7px", borderRadius: 7, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 14, lineHeight: 1, display: "inline-flex", alignItems: "center" },
-    emptyState:   { padding: "3rem", textAlign: "center", color: "#94a3b8", fontSize: 14 },
-    overlay:      { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 500, padding: "1rem" },
-    modal:        { background: "#fff", borderRadius: 16, padding: "2rem", width: "100%", maxWidth: 440, boxShadow: "0 20px 60px rgba(0,0,0,0.15)" },
-    modalTitle:   { fontSize: 18, fontWeight: 700, color: "#0f172a", display: "flex", alignItems: "center" },
-    modalLabel:   { display: "block", fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" },
-    modalInput:   { width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #e2e8f0", fontSize: 14, color: "#0f172a", outline: "none", fontFamily: "inherit", boxSizing: "border-box" },
+    bellBtn:         { width: 36, height: 36, borderRadius: "50%", background: "#fff", border: "1px solid #e2e8f0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" },
+    badge:           { position: "absolute", top: -3, right: -3, background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 700, padding: "1px 4px", borderRadius: 8, border: "2px solid #f1f5f9", minWidth: 16, textAlign: "center" },
+    notifPanel:      { position: "absolute", top: 44, width: 320, background: "#fff", border: "1px solid #e8edf2", borderRadius: 14, boxShadow: "0 12px 40px rgba(0,0,0,0.12)", overflow: "hidden", zIndex: 400 },
+    notifHeader:     { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid #f1f5f9" },
+    smBtn:           { display: "flex", alignItems: "center", gap: 3, padding: "3px 8px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", fontSize: 11, color: "#64748b", cursor: "pointer" },
+    statsGrid:       { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px,1fr))", gap: 12, marginBottom: "1.75rem" },
+    statCard:        { background: "#fff", borderRadius: 14, padding: "1rem 1.25rem", boxShadow: "0 1px 6px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: 4, border: "1px solid #e8edf2" },
+    statIcon:        { width: 34, height: 34, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, marginBottom: 4 },
+    statVal:         { fontSize: 26, fontWeight: 700, color: "#0f172a", letterSpacing: "-1px" },
+    statLabel:       { fontSize: 12, color: "#64748b", fontWeight: 500 },
+    filterBar:       { display: "flex", gap: 12, marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" },
+    searchWrap:      { position: "relative", flex: "1 1 240px", minWidth: 200 },
+    searchInput:     { width: "100%", padding: "9px 12px 9px 34px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 14, color: "#0f172a", outline: "none", fontFamily: "inherit", background: "#fff", boxSizing: "border-box" },
+    roleFilters:     { display: "flex", gap: 6, flexWrap: "wrap" },
+    filterChip:      { padding: "5px 12px", borderRadius: 20, border: "1.5px solid #e2e8f0", background: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#64748b", fontFamily: "inherit" },
+    filterChipActive:{ background: "#1e293b", color: "#fff", border: "1.5px solid #1e293b" },
+    tableWrap:       { background: "#fff", borderRadius: 14, border: "1px solid #e8edf2", overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" },
+    table:           { width: "100%", borderCollapse: "collapse" },
+    th:              { padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #f1f5f9", background: "#f8fafc" },
+    tr:              { transition: "background 0.1s" },
+    td:              { padding: "12px 16px", borderBottom: "1px solid #f1f5f9" },
+    actionBtn:       { padding: "5px 7px", borderRadius: 7, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 14, lineHeight: 1, display: "inline-flex", alignItems: "center" },
+    emptyState:      { padding: "3rem", textAlign: "center", color: "#94a3b8", fontSize: 14 },
+    overlay:         { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 500, padding: "1rem" },
+    modal:           { background: "#fff", borderRadius: 16, padding: "2rem", width: "100%", maxWidth: 440, boxShadow: "0 20px 60px rgba(0,0,0,0.15)" },
+    modalTitle:      { fontSize: 18, fontWeight: 700, color: "#0f172a", display: "flex", alignItems: "center" },
+    modalLabel:      { display: "block", fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" },
+    modalInput:      { width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #e2e8f0", fontSize: 14, color: "#0f172a", outline: "none", fontFamily: "inherit", boxSizing: "border-box" },
     modalCancelBtn:  { padding: "8px 18px", borderRadius: 8, border: "1.5px solid #e2e8f0", background: "#fff", color: "#374151", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" },
     modalSaveBtn:    { padding: "8px 18px", borderRadius: 8, border: "none", background: "#1e293b", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" },
     toggleBtn:       { padding: "6px 14px", borderRadius: 8, border: "1.5px solid #e2e8f0", background: "#fff", color: "#64748b", fontSize: 13, fontWeight: 500, cursor: "pointer" },

@@ -12,7 +12,7 @@ input:focus { border-color: #3b82f6 !important; box-shadow: 0 0 0 3px rgba(59,13
 button:hover:not(:disabled) { opacity: 0.88; }
 `;
 
-const API = "http://localhost:8080/api/auth";
+const API = "http://localhost:8081/api/auth";
 
 // ── Steps: "email" | "otp" | "newPassword" | "done"
 
