@@ -52,6 +52,7 @@ const FacilitiesPage = () => {
         </div>
       </div>
   );
+  
 };
 
 const styles = {
