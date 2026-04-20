@@ -26,14 +26,12 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     @Autowired
     private JwtService jwtService;
 
-    // Detect which frontend port is being used by checking the Referer / Origin header,
-    // falling back to 5173 (Vite default). Change to 3000 if you use CRA.
     private String detectFrontendOrigin(HttpServletRequest request) {
         String origin = request.getHeader("Origin");
-        if (origin != null && origin.contains("3000")) return "http://localhost:3000";
+        if (origin != null && (origin.contains("3000") || origin.contains("5173"))) return origin;
         String referer = request.getHeader("Referer");
-        if (referer != null && referer.contains("3000")) return "http://localhost:3000";
-        return "http://localhost:5173";
+        if (referer != null && referer.contains("5173")) return "http://localhost:5173";
+        return "http://localhost:3000";
     }
 
     @Override
@@ -46,16 +44,13 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         String name    = oAuth2User.getAttribute("name");
         String picture = oAuth2User.getAttribute("picture");
 
-        // Determine provider from the request URI
         String requestUri = request.getRequestURI();
         String provider = "GOOGLE";
-        if (requestUri.contains("github"))   provider = "GITHUB";
+        if (requestUri.contains("github"))        provider = "GITHUB";
         else if (requestUri.contains("facebook")) provider = "FACEBOOK";
 
         if (email == null) {
-            // Some providers don't expose email — redirect with error
-            String frontendOrigin = detectFrontendOrigin(request);
-            response.sendRedirect(frontendOrigin + "/login?error=no_email");
+            response.sendRedirect(detectFrontendOrigin(request) + "/login?error=no_email");
             return;
         }
 
@@ -64,7 +59,6 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         if (existing.isPresent()) {
             user = existing.get();
-            // Update profile photo from Google if not already set
             if (picture != null && (user.getProfilePhotoUrl() == null || user.getProfilePhotoUrl().isBlank())) {
                 user.setProfilePhotoUrl(picture);
                 user.setUpdatedAt(LocalDateTime.now());
@@ -86,10 +80,10 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         String token = jwtService.generateToken(user.getEmail(), user.getRole(), user.getId());
 
-        String encodedName  = URLEncoder.encode(user.getName()     != null ? user.getName()     : "", StandardCharsets.UTF_8);
-        String encodedEmail = URLEncoder.encode(user.getEmail()    != null ? user.getEmail()    : "", StandardCharsets.UTF_8);
+        String encodedName  = URLEncoder.encode(user.getName()            != null ? user.getName()            : "", StandardCharsets.UTF_8);
+        String encodedEmail = URLEncoder.encode(user.getEmail()           != null ? user.getEmail()           : "", StandardCharsets.UTF_8);
         String encodedPhoto = URLEncoder.encode(user.getProfilePhotoUrl() != null ? user.getProfilePhotoUrl() : "", StandardCharsets.UTF_8);
-        String encodedUname = URLEncoder.encode(user.getUserName() != null ? user.getUserName() : "", StandardCharsets.UTF_8);
+        String encodedUname = URLEncoder.encode(user.getUserName()        != null ? user.getUserName()        : "", StandardCharsets.UTF_8);
 
         String frontendOrigin = detectFrontendOrigin(request);
 
