@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
 import axios from "axios";
 import {
-  FiBell, FiUser, FiCalendar, FiLogOut, FiSettings,
+  FiBell, FiUser, FiCalendar, FiLogOut,
   FiZap, FiCheck, FiTrash2, FiX, FiCheckCircle,
   FiAlertCircle, FiInfo, FiGift, FiBookOpen
 } from "react-icons/fi";

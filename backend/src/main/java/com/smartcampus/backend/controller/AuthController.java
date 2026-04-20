@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:3005", "http://localhost:5173"})
 public class AuthController {
 
     @Autowired private UserRepository  userRepository;
@@ -89,7 +89,11 @@ public class AuthController {
 
         String otp = otpService.generateAndStore(normalizedEmail);
         try {
-            emailService.sendOtp(normalizedEmail, otp, "REGISTER");
+            if (emailService != null) {
+                emailService.sendOtp(normalizedEmail, otp, "REGISTER");
+            } else {
+                System.out.println("[AUTH] Email service not configured. OTP for registration: " + otp);
+            }
         } catch (Exception e) {
             pendingRegistrations.remove(normalizedEmail);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -318,7 +322,11 @@ public class AuthController {
 
         String otp = otpService.generateAndStore(normalizedEmail);
         try {
-            emailService.sendOtp(normalizedEmail, otp, "RESET_PASSWORD");
+            if (emailService != null) {
+                emailService.sendOtp(normalizedEmail, otp, "RESET_PASSWORD");
+            } else {
+                System.out.println("[AUTH] Email service not configured. OTP for password reset: " + otp);
+            }
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "Failed to send OTP. Please try again."));

@@ -26,6 +26,11 @@ public class EmailService {
      */
     public void sendOtp(String to, String otp, String purpose) throws MessagingException {
 
+        if (mailSender == null) {
+            System.out.println("[EMAIL] Mail not configured. OTP email to " + to + " not sent. OTP: " + otp);
+            return;
+        }
+
         boolean isRegister = "REGISTER".equals(purpose);
 
         String subject  = isRegister
