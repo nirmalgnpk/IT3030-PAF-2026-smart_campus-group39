@@ -32,7 +32,7 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
                 ...prev,
                 userName: currentUser.name || '',
                 userEmail: currentUser.email || '',
-                userId: currentUser.id || currentUser.userId || '',
+                userId: currentUser.email?.split('@')[0] || '',
             }));
         }
     }, [currentUser]);
