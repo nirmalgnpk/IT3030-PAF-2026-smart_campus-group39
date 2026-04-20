@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { FiTrash2 } from 'react-icons/fi';
 
-const BookingCard = ({ booking, onApprove, onReject, onCancel, isAdmin }) => {
+const BookingCard = ({ booking, onApprove, onReject, onCancel, onDelete, isAdmin }) => {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     const getStatusBg = (status) => {
         switch (status) {
@@ -49,6 +51,21 @@ const BookingCard = ({ booking, onApprove, onReject, onCancel, isAdmin }) => {
     const handleRejectCancel = () => {
         setShowRejectModal(false);
         setRejectionReason('');
+    };
+
+    const handleDeleteClick = () => {
+        setShowDeleteConfirm(true);
+    };
+
+    const handleDeleteConfirm = () => {
+        if (onDelete) {
+            onDelete(booking.id);
+        }
+        setShowDeleteConfirm(false);
+    };
+
+    const handleDeleteCancel = () => {
+        setShowDeleteConfirm(false);
     };
 
     return (
@@ -121,6 +138,21 @@ const BookingCard = ({ booking, onApprove, onReject, onCancel, isAdmin }) => {
                             >
                                 Reject
                             </button>
+                    <button
+                        onClick={handleDeleteClick}
+                        style={styles.btnDeleteIcon}
+                        title="Delete booking"
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#dc2626';
+                            e.currentTarget.style.transform = 'scale(1.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#ef4444';
+                            e.currentTarget.style.transform = 'scale(1)';
+                        }}
+                    >
+                        <FiTrash2 size={16} />
+                    </button>
                         </>
                     )}
 
@@ -141,6 +173,63 @@ const BookingCard = ({ booking, onApprove, onReject, onCancel, isAdmin }) => {
                             style={styles.btnCancel}
                         >
                             Cancel Booking
+                        </button>
+                    )}
+
+                    {/* APPROVED + Admin: Delete button */}
+                    {booking.status === 'APPROVED' && isAdmin && (
+                        <button
+                            onClick={handleDeleteClick}
+                            style={styles.btnDeleteIcon}
+                            title="Delete booking"
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#dc2626';
+                                e.currentTarget.style.transform = 'scale(1.1)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = '#ef4444';
+                                e.currentTarget.style.transform = 'scale(1)';
+                            }}
+                        >
+                            <FiTrash2 size={16} />
+                        </button>
+                    )}
+
+                    {/* REJECTED + Admin: Delete button */}
+                    {booking.status === 'REJECTED' && isAdmin && (
+                        <button
+                            onClick={handleDeleteClick}
+                            style={styles.btnDeleteIcon}
+                            title="Delete booking"
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#dc2626';
+                                e.currentTarget.style.transform = 'scale(1.1)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = '#ef4444';
+                                e.currentTarget.style.transform = 'scale(1)';
+                            }}
+                        >
+                            <FiTrash2 size={16} />
+                        </button>
+                    )}
+
+                    {/* CANCELLED + Admin: Delete button */}
+                    {booking.status === 'CANCELLED' && isAdmin && (
+                        <button
+                            onClick={handleDeleteClick}
+                            style={styles.btnDeleteIcon}
+                            title="Delete booking"
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#dc2626';
+                                e.currentTarget.style.transform = 'scale(1.1)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = '#ef4444';
+                                e.currentTarget.style.transform = 'scale(1)';
+                            }}
+                        >
+                            <FiTrash2 size={16} />
                         </button>
                     )}
                 </div>
@@ -175,6 +264,32 @@ const BookingCard = ({ booking, onApprove, onReject, onCancel, isAdmin }) => {
                                 }}
                             >
                                 Confirm Reject
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && (
+                <div style={styles.overlay}>
+                    <div style={styles.modal}>
+                        <h3 style={styles.modalTitle}>Delete Booking</h3>
+                        <p style={styles.confirmText}>
+                            Are you sure you want to delete this booking? This action cannot be undone.
+                        </p>
+                        <div style={styles.modalActions}>
+                            <button
+                                onClick={handleDeleteCancel}
+                                style={styles.btnSecondary}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteConfirm}
+                                style={styles.btnDeleteConfirm}
+                            >
+                                Delete Booking
                             </button>
                         </div>
                     </div>
@@ -257,33 +372,37 @@ const styles = {
     },
     actions: {
         display: 'flex',
-        gap: '8px',
+        gap: '6px',
         flexWrap: 'wrap',
         marginTop: '12px',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     btnApprove: {
-        flex: 1,
-        minWidth: '100px',
-        padding: '8px 16px',
+        padding: '6px 12px',
         backgroundColor: '#16a34a',
         color: 'white',
         border: 'none',
-        borderRadius: '8px',
-        fontSize: '12px',
+        borderRadius: '6px',
+        fontSize: '11px',
         fontWeight: '600',
         cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        transition: 'all 0.2s ease',
+        flex: 'none',
     },
     btnReject: {
-        flex: 1,
-        minWidth: '100px',
-        padding: '8px 16px',
+        padding: '6px 12px',
         backgroundColor: '#dc2626',
         color: 'white',
         border: 'none',
-        borderRadius: '8px',
-        fontSize: '12px',
+        borderRadius: '6px',
+        fontSize: '11px',
         fontWeight: '600',
         cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        transition: 'all 0.2s ease',
+        flex: 'none',
     },
     btnCancel: {
         flex: 1,
@@ -296,6 +415,33 @@ const styles = {
         fontSize: '12px',
         fontWeight: '600',
         cursor: 'pointer',
+    },
+    btnDelete: {
+        flex: 1,
+        minWidth: '100px',
+        padding: '8px 16px',
+        backgroundColor: '#ef4444',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '12px',
+        fontWeight: '600',
+        cursor: 'pointer',
+    },
+    btnDeleteIcon: {
+        padding: '4px 6px',
+        backgroundColor: '#ef4444',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'all 0.2s ease',
+        flexShrink: 0,
+        minWidth: 'auto',
+        marginLeft: 'auto',
     },
     overlay: {
         position: 'fixed',
@@ -353,6 +499,22 @@ const styles = {
     btnPrimary: {
         padding: '9px 18px',
         backgroundColor: '#C8963E',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        fontWeight: '500',
+        fontSize: '14px',
+        cursor: 'pointer',
+    },
+    confirmText: {
+        fontSize: '14px',
+        color: '#555',
+        marginBottom: '20px',
+        margin: '0 0 20px 0',
+    },
+    btnDeleteConfirm: {
+        padding: '9px 18px',
+        backgroundColor: '#dc2626',
         color: 'white',
         border: 'none',
         borderRadius: '8px',

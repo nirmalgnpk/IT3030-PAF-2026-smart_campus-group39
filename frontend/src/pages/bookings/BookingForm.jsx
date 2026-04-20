@@ -19,6 +19,7 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState('');
     const [resourceData, setResourceData] = useState(null);
+    const [timeErrors, setTimeErrors] = useState({ startTime: '', endTime: '' });
     // eslint-disable-next-line no-unused-vars
     const [resourceLoading, setResourceLoading] = useState(true);
     // eslint-disable-next-line no-unused-vars
@@ -63,11 +64,54 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
             ...prev,
             [name]: name === 'expectedAttendees' ? parseInt(value) || 1 : value,
         }));
+
+        // Validate time fields
+        if (name === 'startTime' || name === 'endTime') {
+            validateTimeFields(name, value);
+        }
+    };
+
+    const validateTimeFields = (fieldName, fieldValue) => {
+        const MIN_TIME = '09:00';
+        const MAX_TIME = '18:00';
+        const newErrors = { ...timeErrors };
+
+        if (fieldName === 'startTime') {
+            if (fieldValue && (fieldValue < MIN_TIME || fieldValue > MAX_TIME)) {
+                newErrors.startTime = 'Start time must be between 9:00 AM and 6:00 PM';
+            } else {
+                newErrors.startTime = '';
+            }
+            // Update endTime minimum if startTime is valid
+            if (fieldValue && fieldValue >= MIN_TIME && fieldValue <= MAX_TIME) {
+                if (formData.endTime && formData.endTime <= fieldValue) {
+                    newErrors.endTime = 'End time must be after start time';
+                } else if (formData.endTime && (formData.endTime < MIN_TIME || formData.endTime > MAX_TIME)) {
+                    newErrors.endTime = 'End time must be between 9:00 AM and 6:00 PM';
+                } else {
+                    newErrors.endTime = '';
+                }
+            }
+        } else if (fieldName === 'endTime') {
+            if (fieldValue && (fieldValue < MIN_TIME || fieldValue > MAX_TIME)) {
+                newErrors.endTime = 'End time must be between 9:00 AM and 6:00 PM';
+            } else if (fieldValue && formData.startTime && fieldValue <= formData.startTime) {
+                newErrors.endTime = 'End time must be after start time';
+            } else {
+                newErrors.endTime = '';
+            }
+        }
+
+        setTimeErrors(newErrors);
     };
 
     const validateForm = () => {
         if (!formData.date || !formData.startTime || !formData.endTime) {
             setError('Date and time fields are required');
+            return false;
+        }
+        if (timeErrors.startTime || timeErrors.endTime) {
+            setError('Please fix the time validation errors below');
             return false;
         }
         if (!formData.purpose.trim()) {
@@ -110,8 +154,9 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
                 if (onSuccess) onSuccess();
             }, 2000);
         } catch (err) {
-            if (err.message.includes('already booked')) {
-                setError('This time slot is already booked. Please choose a different time.');
+            // Check for 409 Conflict status code (resource already booked)
+            if (err.response?.status === 409 || err.message.includes('already booked')) {
+                setError('This resource is already booked for the selected time. Please choose a different time slot.');
             } else {
                 setError(err.message || 'Failed to create booking');
             }
@@ -261,9 +306,18 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
                                 name="startTime"
                                 value={formData.startTime}
                                 onChange={handleInputChange}
-                                style={styles.input}
+                                min="09:00"
+                                max="18:00"
+                                style={{
+                                    ...styles.input,
+                                    borderColor: timeErrors.startTime ? '#d32f2f' : '#ddd',
+                                    backgroundColor: timeErrors.startTime ? '#ffebee' : 'white',
+                                }}
                                 required
                             />
+                            {timeErrors.startTime && (
+                                <p style={styles.errorMessage}>{timeErrors.startTime}</p>
+                            )}
                         </div>
                         <div style={styles.field}>
                             <label style={styles.label}>End Time *</label>
@@ -272,9 +326,18 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
                                 name="endTime"
                                 value={formData.endTime}
                                 onChange={handleInputChange}
-                                style={styles.input}
+                                min={formData.startTime || '09:00'}
+                                max="18:00"
+                                style={{
+                                    ...styles.input,
+                                    borderColor: timeErrors.endTime ? '#d32f2f' : '#ddd',
+                                    backgroundColor: timeErrors.endTime ? '#ffebee' : 'white',
+                                }}
                                 required
                             />
+                            {timeErrors.endTime && (
+                                <p style={styles.errorMessage}>{timeErrors.endTime}</p>
+                            )}
                         </div>
                         <div style={styles.field}>
                             <label style={styles.label}>Expected Attendees *</label>
@@ -308,11 +371,11 @@ const BookingForm = ({ resourceId, resourceName, onSuccess, onCancel }) => {
                 <div style={styles.actions}>
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || timeErrors.startTime || timeErrors.endTime}
                         style={{
                             ...styles.btnSubmit,
-                            opacity: loading ? 0.6 : 1,
-                            cursor: loading ? 'not-allowed' : 'pointer',
+                            opacity: (loading || timeErrors.startTime || timeErrors.endTime) ? 0.6 : 1,
+                            cursor: (loading || timeErrors.startTime || timeErrors.endTime) ? 'not-allowed' : 'pointer',
                         }}
                     >
                         {loading ? 'Submitting...' : 'Submit Booking Request'}
@@ -402,6 +465,12 @@ const styles = {
         outline: 'none',
         fontFamily: 'inherit',
         fontWeight: '400',
+    },
+    errorMessage: {
+        color: '#d32f2f',
+        fontSize: '12px',
+        marginTop: '4px',
+        fontWeight: '500',
     },
     form: {
         width: '100%',

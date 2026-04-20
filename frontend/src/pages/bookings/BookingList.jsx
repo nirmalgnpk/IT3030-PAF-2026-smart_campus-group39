@@ -6,6 +6,7 @@ import {
     approveBooking,
     rejectBooking,
     cancelBooking,
+    deleteBooking,
 } from '../../services/bookingService';
 import { useAuth } from '../../AuthContext';
 
@@ -101,6 +102,16 @@ const BookingList = () => {
         setCancelBookingId(null);
     };
 
+    const handleDelete = async (id) => {
+        try {
+            await deleteBooking(id);
+            setBookings(prev => prev.filter(booking => booking.id !== id));
+            setError(null);
+        } catch (err) {
+            setError(err.message || 'Failed to delete booking');
+        }
+    };
+
     return (
         <div style={{ padding: '24px 20px', minHeight: '60vh' }}>
             <div style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -144,6 +155,7 @@ const BookingList = () => {
                                 onApprove={handleApprove}
                                 onReject={handleRejectClick}
                                 onCancel={handleCancelClick}
+                                onDelete={handleDelete}
                                 isAdmin={isAdmin}
                             />
                         ))}
