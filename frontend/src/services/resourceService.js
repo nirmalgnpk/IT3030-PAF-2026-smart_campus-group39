@@ -1,5 +1,5 @@
-const API_BASE_URL = 'http://localhost:8081/api/resources';
 import api from '../api';
+const API_BASE_URL = 'http://localhost:8082/api/resources';
 
 /**
  * Build query string from filter object
