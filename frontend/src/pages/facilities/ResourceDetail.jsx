@@ -91,7 +91,7 @@ const Spinner = ({ size = 24, color = '#0B1F3A' }) => (
   </svg>
 );
 
-const NavBar = ({ resourceName, onBack, onEdit, onDelete, isDeleteLoading }) => (
+const NavBar = ({ resourceName, onBack, onEdit, onDelete, isDeleteLoading, isAdmin = false }) => (
   <div style={{
     display: 'flex',
     alignItems: 'center',
@@ -129,58 +129,60 @@ const NavBar = ({ resourceName, onBack, onEdit, onDelete, isDeleteLoading }) => 
       </div>
     </div>
 
-    {/* Action buttons */}
-    <div style={{ display: 'flex', gap: '0.625rem' }}>
-      <button
-        onClick={onEdit}
-        style={{
-          backgroundColor: '#0B1F3A',
-          color: 'white',
-          fontSize: '12px',
-          fontWeight: '600',
-          padding: '0.5rem 1rem',
-          borderRadius: '8px',
-          border: 'none',
-          cursor: 'pointer',
-          transition: 'background-color 180ms ease',
-        }}
-        onMouseEnter={(e) => e.target.style.backgroundColor = '#132d52'}
-        onMouseLeave={(e) => e.target.style.backgroundColor = '#0B1F3A'}
-      >
-        Edit
-      </button>
-      <button
-        onClick={onDelete}
-        disabled={isDeleteLoading}
-        style={{
-          backgroundColor: isDeleteLoading ? '#f3f4f6' : '#E24B4A',
-          color: isDeleteLoading ? '#9ca3af' : 'white',
-          fontSize: '12px',
-          fontWeight: '600',
-          padding: '0.5rem 1rem',
-          borderRadius: '8px',
-          border: 'none',
-          cursor: isDeleteLoading ? 'not-allowed' : 'pointer',
-          transition: 'all 180ms ease',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.375rem',
-        }}
-        onMouseEnter={(e) => {
-          if (!isDeleteLoading) e.target.style.backgroundColor = '#C32F2A';
-        }}
-        onMouseLeave={(e) => {
-          if (!isDeleteLoading) e.target.style.backgroundColor = '#E24B4A';
-        }}
-      >
-        {isDeleteLoading ? <Spinner size={14} color="#6b7280" /> : null}
-        Delete
-      </button>
-    </div>
+    {/* Action buttons - Admin Only */}
+    {isAdmin && (
+      <div style={{ display: 'flex', gap: '0.625rem' }}>
+        <button
+          onClick={onEdit}
+          style={{
+            backgroundColor: '#0B1F3A',
+            color: 'white',
+            fontSize: '12px',
+            fontWeight: '600',
+            padding: '0.5rem 1rem',
+            borderRadius: '8px',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'background-color 180ms ease',
+          }}
+          onMouseEnter={(e) => e.target.style.backgroundColor = '#132d52'}
+          onMouseLeave={(e) => e.target.style.backgroundColor = '#0B1F3A'}
+        >
+          Edit
+        </button>
+        <button
+          onClick={onDelete}
+          disabled={isDeleteLoading}
+          style={{
+            backgroundColor: isDeleteLoading ? '#f3f4f6' : '#E24B4A',
+            color: isDeleteLoading ? '#9ca3af' : 'white',
+            fontSize: '12px',
+            fontWeight: '600',
+            padding: '0.5rem 1rem',
+            borderRadius: '8px',
+            border: 'none',
+            cursor: isDeleteLoading ? 'not-allowed' : 'pointer',
+            transition: 'all 180ms ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.375rem',
+          }}
+          onMouseEnter={(e) => {
+            if (!isDeleteLoading) e.target.style.backgroundColor = '#C32F2A';
+          }}
+          onMouseLeave={(e) => {
+            if (!isDeleteLoading) e.target.style.backgroundColor = '#E24B4A';
+          }}
+        >
+          {isDeleteLoading ? <Spinner size={14} color="#6b7280" /> : null}
+          Delete
+        </button>
+      </div>
+    )}
   </div>
 );
 
-const ResourceDetail = () => {
+const ResourceDetail = ({ isAdmin = false }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [resource, setResource] = useState(null);
@@ -267,6 +269,7 @@ const ResourceDetail = () => {
         onEdit={() => setShowForm(true)}
         onDelete={handleDelete}
         isDeleteLoading={deleteLoading}
+        isAdmin={isAdmin}
       />
 
       {/* ── Metrics ── */}

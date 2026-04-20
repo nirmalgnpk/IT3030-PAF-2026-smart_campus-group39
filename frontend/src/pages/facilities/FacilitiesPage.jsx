@@ -75,7 +75,7 @@ const FacilitiesPage = () => {
       <Navbar />
 
       {/* ── Hero header ── */}
-      <div style={{ backgroundColor: '#0B1F3A', position: 'relative', overflow: 'hidden', backgroundImage: 'url(/image/12.jpeg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
+      <div style={{ backgroundColor: '#0B1F3A', position: 'relative', overflow: 'hidden', backgroundImage: 'url(/image/56.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
         
         {/* Dark overlay */}
         <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.65)', pointerEvents: 'none' }} />
@@ -211,7 +211,7 @@ const FacilitiesPage = () => {
 
       {/* ── Main content ── */}
       <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '2rem 1rem' }}>
-        <ResourceList />
+        <ResourceList isAdmin={isAdmin} />
       </div>
 
       {/* ── Available Resources Modal ── */}
