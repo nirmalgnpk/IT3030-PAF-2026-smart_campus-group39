@@ -33,7 +33,7 @@ function App() {
                 button:hover { opacity: 0.92; }
                 a:hover { opacity: 0.85; }
             `}</style>
-            <BrowserRouter>
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <AuthProvider>
                 <Routes>
                   {/* Public */}
