@@ -106,6 +106,53 @@ function App() {
                 button:hover { opacity: 0.92; }
                 a:hover { opacity: 0.85; }
             `}</style>
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <AuthProvider>
+                <Routes>
+                  {/* Public */}
+                  <Route path="/"                element={<Home />} />
+                  <Route path="/login"           element={<Login />} />
+                  <Route path="/register"        element={<Register />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/oauth-callback"  element={<OAuth2Callback />} />
+
+                  {/* Protected — any logged-in user */}
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute><Home /></ProtectedRoute>
+                  } />
+                  <Route path="/facilities" element={
+                    <ProtectedRoute><FacilitiesPage /></ProtectedRoute>
+                  } />
+                  <Route path="/facilities/:id" element={
+                    <ProtectedRoute><ResourceDetail /></ProtectedRoute>
+                  } />
+                  <Route path="/bookings" element={
+                    <ProtectedRoute><Bookings /></ProtectedRoute>
+                  } />
+                  <Route path="/tickets" element={
+                    <ProtectedRoute><Tickets /></ProtectedRoute>
+                  } />
+                  <Route path="/notifications" element={
+                    <ProtectedRoute><Notifications /></ProtectedRoute>
+                  } />
+
+                  {/* ✅ Profile page */}
+                  <Route path="/profile" element={
+                    <ProtectedRoute><Profile /></ProtectedRoute>
+                  } />
+
+                  {/* ✅ Admin only */}
+                  <Route path="/admin/dashboard" element={
+                    <ProtectedRoute roles={["ADMIN"]}><AdminDashboard /></ProtectedRoute>
+                  } />
+
+                  {/* Technician + Admin */}
+                  <Route path="/admin/tickets" element={
+                    <ProtectedRoute roles={["TECHNICIAN", "ADMIN"]}><Tickets /></ProtectedRoute>
+                  } />
+                </Routes>
+              </AuthProvider>
+            </BrowserRouter>
 
             <AuthProvider>
                 <Router>
