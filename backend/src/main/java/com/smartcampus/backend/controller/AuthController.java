@@ -26,26 +26,23 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:3005", "http://localhost:5173"})
 public class AuthController {
 
     @Autowired private UserRepository  userRepository;
     @Autowired private JwtService      jwtService;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private OtpService      otpService;
-    @Autowired(required = false) private EmailService    emailService;
+    @Autowired(required = false) private EmailService emailService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
 
-    // Pending registrations: email → form data (password already encoded)
     private final Map<String, Map<String, String>> pendingRegistrations = new ConcurrentHashMap<>();
-
-    // Short-lived reset tokens: email → UUID  (consumed after /forgot-password/reset)
     private final Map<String, String> resetTokens = new ConcurrentHashMap<>();
 
     // =========================================================================
-    //  REGISTRATION — Step 1: validate, store pending, send OTP
+    //  REGISTRATION — Step 1
     // =========================================================================
 
     @PostMapping("/send-register-otp")
@@ -89,7 +86,11 @@ public class AuthController {
 
         String otp = otpService.generateAndStore(normalizedEmail);
         try {
-            emailService.sendOtp(normalizedEmail, otp, "REGISTER");
+            if (emailService != null) {
+                emailService.sendOtp(normalizedEmail, otp, "REGISTER");
+            } else {
+                System.out.println("[AUTH] Email service not configured. OTP for registration: " + otp);
+            }
         } catch (Exception e) {
             pendingRegistrations.remove(normalizedEmail);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -100,7 +101,7 @@ public class AuthController {
     }
 
     // =========================================================================
-    //  REGISTRATION — Step 2: verify OTP, save user, return JWT
+    //  REGISTRATION — Step 2
     // =========================================================================
 
     @PostMapping("/verify-register-otp")
@@ -301,7 +302,7 @@ public class AuthController {
     }
 
     // =========================================================================
-    //  FORGOT PASSWORD — Step 1: send OTP
+    //  FORGOT PASSWORD
     // =========================================================================
 
     @PostMapping("/forgot-password/send-otp")
@@ -318,7 +319,11 @@ public class AuthController {
 
         String otp = otpService.generateAndStore(normalizedEmail);
         try {
-            emailService.sendOtp(normalizedEmail, otp, "RESET_PASSWORD");
+            if (emailService != null) {
+                emailService.sendOtp(normalizedEmail, otp, "RESET_PASSWORD");
+            } else {
+                System.out.println("[AUTH] Email service not configured. OTP for password reset: " + otp);
+            }
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "Failed to send OTP. Please try again."));
@@ -326,10 +331,6 @@ public class AuthController {
 
         return ResponseEntity.ok(Map.of("message", "OTP sent to " + normalizedEmail));
     }
-
-    // =========================================================================
-    //  FORGOT PASSWORD — Step 2: verify OTP, issue reset token
-    // =========================================================================
 
     @PostMapping("/forgot-password/verify-otp")
     public ResponseEntity<Map<String, Object>> forgotPasswordVerifyOtp(@RequestBody Map<String, String> body) {
@@ -356,10 +357,6 @@ public class AuthController {
         resp.put("message",    "OTP verified. You may now reset your password.");
         return ResponseEntity.ok(resp);
     }
-
-    // =========================================================================
-    //  FORGOT PASSWORD — Step 3: set new password
-    // =========================================================================
 
     @PostMapping("/forgot-password/reset")
     public ResponseEntity<Map<String, Object>> forgotPasswordReset(@RequestBody Map<String, String> body) {
@@ -399,7 +396,7 @@ public class AuthController {
     }
 
     // =========================================================================
-    //  Legacy stubs — kept for backward compatibility
+    //  Legacy stubs
     // =========================================================================
 
     @Deprecated

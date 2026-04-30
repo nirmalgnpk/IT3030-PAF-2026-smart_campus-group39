@@ -8,8 +8,7 @@ import {
     HiOutlineAtSymbol, HiOutlineEye, HiOutlineEyeOff,
     HiExclamationCircle, HiCheckCircle,
 } from "react-icons/hi";
-import { MdOutlineEngineering } from "react-icons/md";
-import { RiAdminLine, RiGraduationCapLine } from "react-icons/ri";
+import { RiGraduationCapLine } from "react-icons/ri";
 import OtpInput from "../../components/auth/OtpInput";
 
 const fontStyle = `
@@ -20,73 +19,60 @@ button:hover:not(:disabled) { opacity: 0.88; }
 `;
 
 const SLIIT_DOMAIN = "@my.sliit.lk";
-const API = "http://localhost:8080/api/auth";
+const API = "http://localhost:8081/api/auth";
 
 function validateEmail(email) {
     const lower = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lower)) return "Enter a valid email address.";
-    if (lower.endsWith(SLIIT_DOMAIN)) {
-        const studentId = lower.split("@")[0];
-        if (!/^[a-z]{2}\d{8}$/.test(studentId))
-            return "SLIIT student email must be like IT23816718@my.sliit.lk";
-    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lower))
+        return "Enter a valid email address.";
+    if (!lower.endsWith(SLIIT_DOMAIN))
+        return "Only SLIIT student emails (@my.sliit.lk) are allowed to register.";
+    const studentId = lower.split("@")[0];
+    if (!/^[a-z]{2}\d{8}$/.test(studentId))
+        return "SLIIT student email must be like IT23816718@my.sliit.lk";
     return null;
 }
 
-const ROLE_OPTIONS = [
-    {
-        value: "TECHNICIAN", label: "Technician", desc: "Maintenance & repairs",
-        Icon: MdOutlineEngineering,
-        bg: "linear-gradient(135deg,#f0fdf4,#dcfce7)", border: "#86efac",
-        color: "#15803d", activeBg: "#15803d", activeColor: "#fff",
-    },
-    {
-        value: "ADMIN", label: "Administrator", desc: "Full system access",
-        Icon: RiAdminLine,
-        bg: "linear-gradient(135deg,#fffbeb,#fef3c7)", border: "#fcd34d",
-        color: "#92400e", activeBg: "#92400e", activeColor: "#fff",
-    },
-];
 const STUDENT_ROLE = {
-    value: "STUDENT", label: "Student", desc: "Detected from SLIIT email",
+    value: "STUDENT",
+    label: "Student",
+    desc: "Detected from SLIIT email",
     Icon: RiGraduationCapLine,
-    bg: "linear-gradient(135deg,#eff6ff,#dbeafe)", border: "#93c5fd", color: "#1d4ed8",
+    bg: "linear-gradient(135deg,#eff6ff,#dbeafe)",
+    border: "#93c5fd",
+    color: "#1d4ed8",
 };
 
 export default function Register() {
-    const { login }    = useAuth();
-    const navigate     = useNavigate();
+    const { login }  = useAuth();
+    const navigate   = useNavigate();
 
-    // ── Step: "form" | "otp"
-    const [step, setStep]   = useState("form");
+    const [step, setStep] = useState("form");
+    const [form, setForm] = useState({ name: "", userName: "", email: "", password: "", confirmPassword: "" });
+    const [errors, setErrors]           = useState({});
+    const [serverError, setServerError] = useState("");
+    const [loading, setLoading]         = useState(false);
+    const [pwVisible, setPwVisible]     = useState(false);
+    const [cpwVisible, setCpwVisible]   = useState(false);
 
-    const [form, setForm]   = useState({ name: "", userName: "", email: "", password: "", confirmPassword: "" });
-    const [errors, setErrors]             = useState({});
-    const [serverError, setServerError]   = useState("");
-    const [loading, setLoading]           = useState(false);
-    const [selectedRole, setSelectedRole] = useState(null);
-    const [showRolePicker, setShowRolePicker] = useState(false);
-    const [pwVisible, setPwVisible]       = useState(false);
-    const [cpwVisible, setCpwVisible]     = useState(false);
-
-    // OTP step state
-    const [otp, setOtp]             = useState("");
-    const [otpError, setOtpError]   = useState("");
+    // OTP step
+    const [otp, setOtp]               = useState("");
+    const [otpError, setOtpError]     = useState("");
     const [otpLoading, setOtpLoading] = useState(false);
     const [resendTimer, setResendTimer] = useState(60);
     const [canResend, setCanResend]   = useState(false);
 
     const emailLower = form.email.trim().toLowerCase();
-    const isStudent  = emailLower.endsWith(SLIIT_DOMAIN) && emailLower.length > SLIIT_DOMAIN.length;
-    const hasEmail   = emailLower.length > 3 && emailLower.includes("@");
+    const isValidSliit = emailLower.endsWith(SLIIT_DOMAIN) && emailLower.length > SLIIT_DOMAIN.length;
 
     useEffect(() => {
         if (isStudent)            { setSelectedRole("STUDENT"); setShowRolePicker(false); }
         else if (hasEmail)        { setShowRolePicker(true); if (selectedRole === "STUDENT") setSelectedRole(null); }
         else                      { setShowRolePicker(false); }
-    }, [form.email]);
+    }, [form.email, hasEmail, isStudent, selectedRole]);
 
     // Resend countdown timer (starts when OTP step is entered)
+    // Resend countdown
     useEffect(() => {
         if (step !== "otp") return;
         setResendTimer(60);
@@ -101,7 +87,10 @@ export default function Register() {
     }, [step]);
 
     function set(key) {
-        return (e) => { setForm(p => ({ ...p, [key]: e.target.value })); setErrors(p => ({ ...p, [key]: null })); };
+        return (e) => {
+            setForm(p => ({ ...p, [key]: e.target.value }));
+            setErrors(p => ({ ...p, [key]: null }));
+        };
     }
 
     function validate() {
@@ -110,14 +99,13 @@ export default function Register() {
         if (!form.userName.trim()) e.userName = "Username is required.";
         if (!form.email.trim())    e.email    = "Email is required.";
         else { const err = validateEmail(form.email); if (err) e.email = err; }
-        if (!selectedRole)         e.role     = "Please select a role.";
         if (!form.password)        e.password = "Password is required.";
         else if (form.password.length < 8) e.password = "Minimum 8 characters.";
-        if (form.password !== form.confirmPassword) e.confirmPassword = "Passwords do not match.";
+        if (form.password !== form.confirmPassword)
+            e.confirmPassword = "Passwords do not match.";
         return e;
     }
 
-    // ── Step 1: Submit form → send OTP
     async function handleFormSubmit(e) {
         e.preventDefault();
         setServerError("");
@@ -132,7 +120,7 @@ export default function Register() {
                 userName: form.userName.trim(),
                 email:    form.email.trim().toLowerCase(),
                 password: form.password,
-                role:     selectedRole,
+                role:     "STUDENT",
             });
             setStep("otp");
         } catch (err) {
@@ -142,7 +130,6 @@ export default function Register() {
         }
     }
 
-    // ── Step 2: Verify OTP → complete registration
     async function handleOtpSubmit() {
         if (otp.length < 6) { setOtpError("Please enter the complete 6-digit OTP."); return; }
         setOtpError("");
@@ -153,7 +140,7 @@ export default function Register() {
                 otp,
             });
             login(data);
-            navigate("/dashboard");
+            navigate("/");
         } catch (err) {
             setOtpError(err.response?.data?.message || "Invalid OTP. Please try again.");
         } finally {
@@ -161,7 +148,6 @@ export default function Register() {
         }
     }
 
-    // ── Resend OTP
     async function handleResend() {
         if (!canResend) return;
         setOtpError("");
@@ -169,7 +155,7 @@ export default function Register() {
             await axios.post(`${API}/send-register-otp`, {
                 name: form.name.trim(), userName: form.userName.trim(),
                 email: form.email.trim().toLowerCase(),
-                password: form.password, role: selectedRole,
+                password: form.password, role: "STUDENT",
             });
             setResendTimer(60);
             setCanResend(false);
@@ -204,21 +190,24 @@ export default function Register() {
                             <p style={css.leftSubtext}>
                                 {step === "otp"
                                     ? `We sent a 6-digit code to ${form.email}. Enter it to verify your email and complete registration.`
-                                    : "Create your account to submit maintenance requests, access campus resources, and collaborate with your team."}
+                                    : "Create your student account to submit maintenance requests, access campus resources, and collaborate with your community."}
                             </p>
                             <div style={css.leftBadge}>
                                 <HiCheckCircle size={16} color="#fff" />
-                                <span>{step === "otp" ? "OTP valid for 10 minutes" : "Secure SLIIT campus portal"}</span>
+                                <span>{step === "otp" ? "OTP valid for 10 minutes" : "SLIIT students only (@my.sliit.lk)"}</span>
                             </div>
                             {step === "form" && (
                                 <div style={css.featureList}>
-                                    {["Submit & track maintenance requests", "Access campus facilities online", "Real-time notifications & updates"]
-                                        .map((f, i) => (
-                                            <div key={i} style={css.featureItem}>
-                                                <HiCheckCircle size={15} color="rgba(255,255,255,0.9)" />
-                                                <span>{f}</span>
-                                            </div>
-                                        ))}
+                                    {[
+                                        "Submit & track maintenance requests",
+                                        "Access campus facilities online",
+                                        "Real-time notifications & updates",
+                                    ].map((f, i) => (
+                                        <div key={i} style={css.featureItem}>
+                                            <HiCheckCircle size={15} color="rgba(255,255,255,0.9)" />
+                                            <span>{f}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -238,12 +227,11 @@ export default function Register() {
                         {/* ── OTP Step ── */}
                         {step === "otp" ? (
                             <>
-                                <div style={{ ...css.iconCircle, background: "linear-gradient(135deg,#eff6ff,#dbeafe)", border: "1px solid #93c5fd" }}>
-                                    📬
-                                </div>
+                                <div style={{ ...css.iconCircle }}>📬</div>
                                 <h1 style={css.title}>Verify your email</h1>
                                 <p style={css.subtitle}>
-                                    Enter the 6-digit code sent to <strong style={{ color: "#0f172a" }}>{form.email}</strong>
+                                    Enter the 6-digit code sent to{" "}
+                                    <strong style={{ color: "#0f172a" }}>{form.email}</strong>
                                 </p>
 
                                 {otpError && (
@@ -272,7 +260,10 @@ export default function Register() {
                                         : <span style={{ color: "#94a3b8" }}>Resend in {resendTimer}s</span>
                                     }
                                 </p>
-                                <button onClick={() => setStep("form")} style={{ ...css.linkBtn, display: "block", margin: "0.5rem auto 0", fontSize: 13 }}>
+                                <button
+                                    onClick={() => setStep("form")}
+                                    style={{ ...css.linkBtn, display: "block", margin: "0.5rem auto 0", fontSize: 13 }}
+                                >
                                     ← Change email or details
                                 </button>
                             </>
@@ -280,7 +271,7 @@ export default function Register() {
                             /* ── Form Step ── */
                             <>
                                 <h1 style={css.title}>Create an account</h1>
-                                <p style={css.subtitle}>Fill in your details to get started</p>
+                                <p style={css.subtitle}>SLIIT students only — use your @my.sliit.lk email</p>
 
                                 {serverError && (
                                     <div style={css.serverError}>
@@ -309,47 +300,35 @@ export default function Register() {
                                         </div>
                                     </div>
 
+                                    {/* Email — shows student badge when valid SLIIT email */}
                                     <div style={css.fieldGroup}>
-                                        <label style={css.label}>Email address</label>
+                                        <label style={css.label}>SLIIT Email address</label>
                                         <div style={css.inputWrap}>
                                             <span style={css.inputIcon}><HiOutlineMail size={15} color="#94a3b8" /></span>
-                                            <input style={{ ...inp("email"), paddingLeft: 36 }} placeholder="your@email.com" onChange={set("email")} autoComplete="email" />
+                                            <input
+                                                style={{ ...inp("email"), paddingLeft: 36 }}
+                                                placeholder="IT23xxxxxx@my.sliit.lk"
+                                                onChange={set("email")}
+                                                autoComplete="email"
+                                            />
                                         </div>
                                         {errors.email && <p style={css.errText}>{errors.email}</p>}
 
-                                        {isStudent && (
+                                        {/* Auto-detected student badge */}
+                                        {isValidSliit && (
                                             <div style={{ ...css.roleChip, background: STUDENT_ROLE.bg, borderColor: STUDENT_ROLE.border }}>
                                                 <STUDENT_ROLE.Icon size={16} color={STUDENT_ROLE.color} />
                                                 <div>
-                                                    <span style={{ fontWeight: 600, color: STUDENT_ROLE.color, fontSize: 13 }}>{STUDENT_ROLE.label}</span>
-                                                    <span style={{ fontSize: 11, color: "#64748b", marginLeft: 6 }}>{STUDENT_ROLE.desc}</span>
+                                                    <span style={{ fontWeight: 600, color: STUDENT_ROLE.color, fontSize: 13 }}>
+                                                        {STUDENT_ROLE.label}
+                                                    </span>
+                                                    <span style={{ fontSize: 11, color: "#64748b", marginLeft: 6 }}>
+                                                        {STUDENT_ROLE.desc}
+                                                    </span>
                                                 </div>
-                                                <span style={css.checkBadge}><HiCheckCircle size={12} color="#16a34a" /> Auto-detected</span>
-                                            </div>
-                                        )}
-
-                                        {showRolePicker && !isStudent && (
-                                            <div style={css.rolePicker}>
-                                                <p style={css.rolePickerLabel}>Select your role</p>
-                                                <div style={css.roleGrid}>
-                                                    {ROLE_OPTIONS.map(r => (
-                                                        <button key={r.value} type="button"
-                                                                onClick={() => setSelectedRole(r.value)}
-                                                                style={{
-                                                                    ...css.roleCard,
-                                                                    background:   selectedRole === r.value ? r.activeBg : r.bg,
-                                                                    borderColor:  selectedRole === r.value ? r.activeBg : r.border,
-                                                                    color:        selectedRole === r.value ? r.activeColor : r.color,
-                                                                    transform:    selectedRole === r.value ? "scale(1.02)" : "scale(1)",
-                                                                    boxShadow:    selectedRole === r.value ? `0 4px 16px ${r.border}99` : "none",
-                                                                }}>
-                                                            <r.Icon size={20} />
-                                                            <span style={{ fontWeight: 600, fontSize: 13 }}>{r.label}</span>
-                                                            <span style={{ fontSize: 11, opacity: 0.75 }}>{r.desc}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                                {errors.role && <p style={{ ...css.errText, marginTop: 6 }}>{errors.role}</p>}
+                                                <span style={css.checkBadge}>
+                                                    <HiCheckCircle size={12} color="#16a34a" /> Auto-detected
+                                                </span>
                                             </div>
                                         )}
                                     </div>
@@ -358,7 +337,13 @@ export default function Register() {
                                         <label style={css.label}>Password</label>
                                         <div style={css.inputWrap}>
                                             <span style={css.inputIcon}><HiOutlineLockClosed size={15} color="#94a3b8" /></span>
-                                            <input type={pwVisible ? "text" : "password"} style={{ ...inp("password"), paddingLeft: 36 }} placeholder="Min. 8 characters" onChange={set("password")} autoComplete="new-password" />
+                                            <input
+                                                type={pwVisible ? "text" : "password"}
+                                                style={{ ...inp("password"), paddingLeft: 36 }}
+                                                placeholder="Min. 8 characters"
+                                                onChange={set("password")}
+                                                autoComplete="new-password"
+                                            />
                                             <button type="button" onClick={() => setPwVisible(v => !v)} style={css.eyeBtn}>
                                                 {pwVisible ? <HiOutlineEyeOff size={15} color="#94a3b8" /> : <HiOutlineEye size={15} color="#94a3b8" />}
                                             </button>
@@ -370,7 +355,13 @@ export default function Register() {
                                         <label style={css.label}>Confirm password</label>
                                         <div style={css.inputWrap}>
                                             <span style={css.inputIcon}><HiOutlineLockClosed size={15} color="#94a3b8" /></span>
-                                            <input type={cpwVisible ? "text" : "password"} style={{ ...inp("confirmPassword"), paddingLeft: 36 }} placeholder="Repeat your password" onChange={set("confirmPassword")} autoComplete="new-password" />
+                                            <input
+                                                type={cpwVisible ? "text" : "password"}
+                                                style={{ ...inp("confirmPassword"), paddingLeft: 36 }}
+                                                placeholder="Repeat your password"
+                                                onChange={set("confirmPassword")}
+                                                autoComplete="new-password"
+                                            />
                                             <button type="button" onClick={() => setCpwVisible(v => !v)} style={css.eyeBtn}>
                                                 {cpwVisible ? <HiOutlineEyeOff size={15} color="#94a3b8" /> : <HiOutlineEye size={15} color="#94a3b8" />}
                                             </button>
@@ -378,7 +369,11 @@ export default function Register() {
                                         {errors.confirmPassword && <p style={css.errText}>{errors.confirmPassword}</p>}
                                     </div>
 
-                                    <button type="submit" style={{ ...css.submitBtn, ...(loading ? css.submitDisabled : {}) }} disabled={loading}>
+                                    <button
+                                        type="submit"
+                                        style={{ ...css.submitBtn, ...(loading ? css.submitDisabled : {}) }}
+                                        disabled={loading}
+                                    >
                                         {loading ? "Sending OTP…" : "Continue →"}
                                     </button>
                                 </form>
@@ -396,50 +391,45 @@ export default function Register() {
     );
 }
 
-/* ── Styles (same as original, extended) ────────────────────────────────── */
 const css = {
-    page: { minHeight: "100vh", display: "flex", fontFamily: "'DM Sans', 'Segoe UI', sans-serif", overflow: "hidden" },
-    leftPanel: { width: "42%", minHeight: "100vh", background: "linear-gradient(145deg, #e84545 0%, #c0392b 40%, #e05c32 80%, #f08040 100%)", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" },
-    leftInner: { position: "relative", zIndex: 2, padding: "3rem 2.5rem", width: "100%" },
-    circleTopRight:    { position: "absolute", top: "-80px",   right: "-80px", width: 300, height: 300, borderRadius: "50%", background: "rgba(255,255,255,0.08)", pointerEvents: "none" },
-    circleMidLeft:     { position: "absolute", top: "38%",     left: "-60px",  width: 220, height: 220, borderRadius: "50%", background: "rgba(255,255,255,0.06)", pointerEvents: "none" },
-    circleBottomRight: { position: "absolute", bottom: "-60px",right: "10%",   width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.07)", pointerEvents: "none" },
-    circleSmall:       { position: "absolute", top: "22%",     right: "15%",   width: 90,  height: 90,  borderRadius: "50%", background: "rgba(255,255,255,0.1)",  pointerEvents: "none" },
-    leftContent: { position: "relative", zIndex: 3 },
-    leftLogo: { display: "flex", alignItems: "center", gap: 10, marginBottom: "3rem" },
-    leftLogoMark: { width: 34, height: 34, borderRadius: 9, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" },
-    leftHeading: { fontSize: 34, fontWeight: 700, color: "#fff", marginBottom: 14, lineHeight: 1.2, letterSpacing: "-0.5px" },
-    leftSubtext: { fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.65, marginBottom: 24, maxWidth: 300 },
-    leftBadge: { display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.15)", backdropFilter: "blur(6px)", borderRadius: 30, padding: "7px 14px", fontSize: 13, color: "#fff", fontWeight: 500, border: "1px solid rgba(255,255,255,0.2)", marginBottom: 28 },
-    featureList: { display: "flex", flexDirection: "column", gap: 10 },
-    featureItem: { display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: "rgba(255,255,255,0.85)" },
-    rightPanel: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", padding: "2rem 1.5rem", overflowY: "auto" },
-    formCard: { background: "#fff", borderRadius: 20, border: "1px solid #e8edf2", padding: "2.25rem 2.25rem", width: "100%", maxWidth: 440, boxShadow: "0 4px 40px rgba(0,0,0,0.06)" },
-    logoRow: { display: "flex", alignItems: "center", gap: 10, marginBottom: "1.5rem" },
-    logoMark: { width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #1e293b, #334155)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(30,41,59,0.3)" },
-    logoText: { fontSize: 15, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px" },
-    iconCircle: { width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(135deg,#fef3c7,#fde68a)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: "1.25rem", border: "1px solid #fcd34d" },
-    title: { fontSize: 24, fontWeight: 700, color: "#0f172a", marginBottom: 4, letterSpacing: "-0.5px" },
-    subtitle: { fontSize: 14, color: "#64748b", marginBottom: "1.5rem" },
-    row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
-    fieldGroup: { marginBottom: "1rem" },
-    label: { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 },
-    inputWrap: { position: "relative", display: "flex", alignItems: "center" },
-    inputIcon: { position: "absolute", left: 11, pointerEvents: "none", display: "flex", alignItems: "center" },
-    input: { width: "100%", padding: "9px 38px 9px 36px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 14, color: "#0f172a", outline: "none", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", background: "#f8fafc", transition: "border-color 0.2s, box-shadow 0.2s" },
-    inputErr: { borderColor: "#f87171", background: "#fff5f5" },
-    eyeBtn: { position: "absolute", right: 10, background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" },
-    errText: { fontSize: 12, color: "#dc2626", marginTop: 4 },
-    roleChip: { display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "8px 12px", borderRadius: 10, border: "1.5px solid", fontSize: 13, flexWrap: "wrap" },
-    checkBadge: { marginLeft: "auto", fontSize: 11, fontWeight: 600, background: "#dcfce7", color: "#16a34a", padding: "2px 8px", borderRadius: 20, display: "flex", alignItems: "center", gap: 4 },
-    rolePicker: { marginTop: 10, padding: "12px 14px", background: "#f8fafc", borderRadius: 12, border: "1.5px solid #e2e8f0" },
-    rolePickerLabel: { fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" },
-    roleGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 },
-    roleCard: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3, padding: "10px 12px", borderRadius: 10, border: "1.5px solid", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textAlign: "left", transition: "all 0.18s ease" },
-    submitBtn: { width: "100%", padding: "11px", background: "linear-gradient(135deg, #1e293b, #0f172a)", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 4, boxShadow: "0 2px 12px rgba(15,23,42,0.3)", transition: "opacity 0.2s" },
-    submitDisabled: { opacity: 0.65, cursor: "not-allowed" },
-    serverError: { background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#dc2626", marginBottom: "1rem", display: "flex", alignItems: "center", gap: 8 },
-    loginRow: { textAlign: "center", marginTop: "1.25rem", fontSize: 13, color: "#64748b" },
-    loginLink: { color: "#3b82f6", textDecoration: "none", fontWeight: 600 },
-    linkBtn: { background: "none", border: "none", color: "#3b82f6", fontWeight: 600, cursor: "pointer", padding: 0, fontFamily: "'DM Sans', sans-serif", fontSize: 13 },
+    page:          { minHeight: "100vh", display: "flex", fontFamily: "'DM Sans', 'Segoe UI', sans-serif", overflow: "hidden" },
+    leftPanel:     { width: "42%", minHeight: "100vh", background: "linear-gradient(145deg, #e84545 0%, #c0392b 40%, #e05c32 80%, #f08040 100%)", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" },
+    leftInner:     { position: "relative", zIndex: 2, padding: "3rem 2.5rem", width: "100%" },
+    circleTopRight:    { position: "absolute", top: "-80px",    right: "-80px", width: 300, height: 300, borderRadius: "50%", background: "rgba(255,255,255,0.08)", pointerEvents: "none" },
+    circleMidLeft:     { position: "absolute", top: "38%",      left: "-60px",  width: 220, height: 220, borderRadius: "50%", background: "rgba(255,255,255,0.06)", pointerEvents: "none" },
+    circleBottomRight: { position: "absolute", bottom: "-60px", right: "10%",   width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.07)", pointerEvents: "none" },
+    circleSmall:       { position: "absolute", top: "22%",      right: "15%",   width: 90,  height: 90,  borderRadius: "50%", background: "rgba(255,255,255,0.1)",  pointerEvents: "none" },
+    leftContent:   { position: "relative", zIndex: 3 },
+    leftLogo:      { display: "flex", alignItems: "center", gap: 10, marginBottom: "3rem" },
+    leftLogoMark:  { width: 34, height: 34, borderRadius: 9, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" },
+    leftHeading:   { fontSize: 34, fontWeight: 700, color: "#fff", marginBottom: 14, lineHeight: 1.2, letterSpacing: "-0.5px" },
+    leftSubtext:   { fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.65, marginBottom: 24, maxWidth: 300 },
+    leftBadge:     { display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.15)", backdropFilter: "blur(6px)", borderRadius: 30, padding: "7px 14px", fontSize: 13, color: "#fff", fontWeight: 500, border: "1px solid rgba(255,255,255,0.2)", marginBottom: 28 },
+    featureList:   { display: "flex", flexDirection: "column", gap: 10 },
+    featureItem:   { display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: "rgba(255,255,255,0.85)" },
+    rightPanel:    { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", padding: "2rem 1.5rem", overflowY: "auto" },
+    formCard:      { background: "#fff", borderRadius: 20, border: "1px solid #e8edf2", padding: "2.25rem 2.25rem", width: "100%", maxWidth: 440, boxShadow: "0 4px 40px rgba(0,0,0,0.06)" },
+    logoRow:       { display: "flex", alignItems: "center", gap: 10, marginBottom: "1.5rem" },
+    logoMark:      { width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #1e293b, #334155)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(30,41,59,0.3)" },
+    logoText:      { fontSize: 15, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.3px" },
+    iconCircle:    { width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(135deg,#eff6ff,#dbeafe)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: "1.25rem", border: "1px solid #93c5fd" },
+    title:         { fontSize: 24, fontWeight: 700, color: "#0f172a", marginBottom: 4, letterSpacing: "-0.5px" },
+    subtitle:      { fontSize: 14, color: "#64748b", marginBottom: "1.5rem" },
+    row:           { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
+    fieldGroup:    { marginBottom: "1rem" },
+    label:         { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 },
+    inputWrap:     { position: "relative", display: "flex", alignItems: "center" },
+    inputIcon:     { position: "absolute", left: 11, pointerEvents: "none", display: "flex", alignItems: "center" },
+    input:         { width: "100%", padding: "9px 38px 9px 36px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 14, color: "#0f172a", outline: "none", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", background: "#f8fafc", transition: "border-color 0.2s, box-shadow 0.2s" },
+    inputErr:      { borderColor: "#f87171", background: "#fff5f5" },
+    eyeBtn:        { position: "absolute", right: 10, background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" },
+    errText:       { fontSize: 12, color: "#dc2626", marginTop: 4 },
+    roleChip:      { display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "8px 12px", borderRadius: 10, border: "1.5px solid", fontSize: 13, flexWrap: "wrap" },
+    checkBadge:    { marginLeft: "auto", fontSize: 11, fontWeight: 600, background: "#dcfce7", color: "#16a34a", padding: "2px 8px", borderRadius: 20, display: "flex", alignItems: "center", gap: 4 },
+    submitBtn:     { width: "100%", padding: "11px", background: "linear-gradient(135deg, #1e293b, #0f172a)", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 4, boxShadow: "0 2px 12px rgba(15,23,42,0.3)", transition: "opacity 0.2s" },
+    submitDisabled:{ opacity: 0.65, cursor: "not-allowed" },
+    serverError:   { background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#dc2626", marginBottom: "1rem", display: "flex", alignItems: "center", gap: 8 },
+    loginRow:      { textAlign: "center", marginTop: "1.25rem", fontSize: 13, color: "#64748b" },
+    loginLink:     { color: "#3b82f6", textDecoration: "none", fontWeight: 600 },
+    linkBtn:       { background: "none", border: "none", color: "#3b82f6", fontWeight: 600, cursor: "pointer", padding: 0, fontFamily: "'DM Sans', sans-serif", fontSize: 13 },
 };

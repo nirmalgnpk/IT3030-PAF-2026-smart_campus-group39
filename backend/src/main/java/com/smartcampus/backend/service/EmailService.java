@@ -3,6 +3,7 @@ package com.smartcampus.backend.service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -17,6 +18,11 @@ public class EmailService {
     @Value("${spring.mail.username:noreply@smartcampus.edu}")
     private String fromEmail;
 
+        @Autowired
+        public EmailService(ObjectProvider<JavaMailSender> mailSenderProvider) {
+                this.mailSender = mailSenderProvider.getIfAvailable();
+        }
+
     /**
      * Sends a styled HTML OTP email.
      *
@@ -25,6 +31,14 @@ public class EmailService {
      * @param purpose "REGISTER" | "RESET_PASSWORD"
      */
     public void sendOtp(String to, String otp, String purpose) throws MessagingException {
+
+        if (mailSender == null) {
+            System.out.println("[EMAIL] Mail not configured. OTP email to " + to + " not sent. OTP: " + otp);
+            return;
+        }
+                if (mailSender == null) {
+                        throw new MessagingException("SMTP is not configured. Set spring.mail.* properties.");
+                }
 
         boolean isRegister = "REGISTER".equals(purpose);
 
