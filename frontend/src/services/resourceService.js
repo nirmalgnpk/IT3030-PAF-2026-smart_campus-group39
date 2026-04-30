@@ -1,23 +1,5 @@
 import api from '../api';
-
-/**
- * Build query string from filter object
- * @param {object} filters - Filter object with optional keys: type, location, minCapacity
- * @returns {string} - Query string (e.g., "?type=LAB&location=Block+A")
- */
-const buildQueryString = (filters) => {
-  if (!filters || Object.keys(filters).length === 0) {
-    return '';
-  }
-
-  const params = new URLSearchParams();
-  if (filters.type) params.append('type', filters.type);
-  if (filters.location) params.append('location', filters.location);
-  if (filters.minCapacity) params.append('minCapacity', filters.minCapacity);
-
-  const queryString = params.toString();
-  return queryString ? `?${queryString}` : '';
-};
+const API_BASE_URL = '/api/resources';
 
 /**
  * Get all resources with optional filtering
@@ -27,8 +9,12 @@ const buildQueryString = (filters) => {
  */
 export const getAllResources = async (filters = {}) => {
   try {
-    const queryString = buildQueryString(filters);
-    const response = await api.get(`/api/resources${queryString}`);
+    const params = {};
+    if (filters.type) params.type = filters.type;
+    if (filters.location) params.location = filters.location;
+    if (filters.minCapacity) params.minCapacity = filters.minCapacity;
+
+    const response = await api.get(API_BASE_URL, { params });
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || error.message || 'Error fetching resources');
@@ -43,7 +29,7 @@ export const getAllResources = async (filters = {}) => {
  */
 export const getResourceById = async (id) => {
   try {
-    const response = await api.get(`/api/resources/${id}`);
+    const response = await api.get(`${API_BASE_URL}/${id}`);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || error.message || 'Error fetching resource');
@@ -58,7 +44,7 @@ export const getResourceById = async (id) => {
  */
 export const createResource = async (resourceData) => {
   try {
-    const response = await api.post('/api/resources', resourceData);
+    const response = await api.post(API_BASE_URL, resourceData);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || error.message || 'Error creating resource');
@@ -74,7 +60,7 @@ export const createResource = async (resourceData) => {
  */
 export const updateResource = async (id, resourceData) => {
   try {
-    const response = await api.put(`/api/resources/${id}`, resourceData);
+    const response = await api.put(`${API_BASE_URL}/${id}`, resourceData);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || error.message || 'Error updating resource');
@@ -89,8 +75,8 @@ export const updateResource = async (id, resourceData) => {
  */
 export const deleteResource = async (id) => {
   try {
-    const response = await api.delete(`/api/resources/${id}`);
-    return response.data || { success: true };
+    const response = await api.delete(`${API_BASE_URL}/${id}`);
+    return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || error.message || 'Error deleting resource');
   }

@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:3005", "http://localhost:5173"})
 public class UserController {
 
     @Autowired private UserService userService;
